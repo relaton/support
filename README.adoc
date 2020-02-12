@@ -64,20 +64,20 @@ export CIMAS_WD=~/src/relaton/cimas-wd
 cimas setup -f $CIMAS_CONFIG -r $CIMAS_WD
 
 cimas pull -f $CIMAS_CONFIG -r $CIMAS_WD \
-  -g flavors
+  -g flavors,compiling
 
 cimas sync -f $CIMAS_CONFIG -r $CIMAS_WD \
   -d $CIMAS_MASTER_DIR \
-  -g flavors
+  -g flavors,compiling
 
 cimas diff -f $CIMAS_CONFIG -r $CIMAS_WD -d $CIMAS_MASTER_DIR \
-  -g flavors
+  -g flavors,compiling
 
 cimas push -f $CIMAS_CONFIG -r $CIMAS_WD \
   -b cimas-initial-run -m 'Cimas initial run' \
-  -g flavors
+  -g flavors,compiling
 
 cimas open-prs -f $CIMAS_CONFIG -r $CIMAS_WD \
   -b cimas-initial-run -m 'Cimas initial run' \
-  -g flavors
+  -g flavors,compiling
 ----

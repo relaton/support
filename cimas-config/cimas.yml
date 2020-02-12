@@ -128,6 +128,9 @@ groups:
   - relaton.com
   - api.relaton.org
   flavors:
+  - relaton
+  - relaton-cli
+  - relaton-bib
   - relaton-calconnect
   - relaton-gb
   - relaton-iec
@@ -138,14 +141,10 @@ groups:
   - relaton-nist
   - relaton-ogc
   - relaton-omg
-  - relaton-un
+  # - relaton-un
   compiling:
   - relaton-iev
   - iso-bib-item
-  relaton:
-  - relaton
-  - relaton-bib
-  - relaton-cli
   models:
   - relaton-models
   others:
