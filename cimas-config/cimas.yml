@@ -1,0 +1,155 @@
+---
+settings:
+  reviewers:
+    - opoudjis
+    - ronaldtse
+
+repositories:
+  relaton-bib:
+    remote: ssh://git@github.com/relaton/relaton-bib
+    branch: master
+    files:
+      .github/workflows/macos.yml: gh-actions/flavors/macos.yml
+      .github/workflows/ubuntu.yml: gh-actions/flavors/ubuntu.yml
+      .github/workflows/windows.yml: gh-actions/flavors/windows.yml
+  relaton-iso-bib:
+    remote: ssh://git@github.com/relaton/relaton-iso-bib
+    branch: master
+    files:
+      .github/workflows/macos.yml: gh-actions/flavors/macos.yml
+      .github/workflows/ubuntu.yml: gh-actions/flavors/ubuntu.yml
+      .github/workflows/windows.yml: gh-actions/flavors/windows.yml
+  relaton-iso:
+    remote: ssh://git@github.com/relaton/relaton-iso
+    branch: master
+    files:
+      .github/workflows/macos.yml: gh-actions/flavors/macos.yml
+      .github/workflows/ubuntu.yml: gh-actions/flavors/ubuntu.yml
+      .github/workflows/windows.yml: gh-actions/flavors/windows.yml
+  relaton-omg:
+    remote: ssh://git@github.com/relaton/relaton-omg
+    branch: master
+    files:
+      .github/workflows/macos.yml: gh-actions/flavors/macos.yml
+      .github/workflows/ubuntu.yml: gh-actions/flavors/ubuntu.yml
+      .github/workflows/windows.yml: gh-actions/flavors/windows.yml
+  relaton-models:
+    remote: ssh://git@github.com/relaton/relaton-models
+    branch: master
+    files:
+      .github/workflows/macos.yml: gh-actions/model/macos.yml
+      .github/workflows/ubuntu.yml: gh-actions/model/ubuntu.yml
+      .github/workflows/windows.yml: gh-actions/model/windows.yml
+  relaton-iec:
+    remote: ssh://git@github.com/relaton/relaton-iec
+    branch: master
+    files:
+      .github/workflows/macos.yml: gh-actions/flavors/macos.yml
+      .github/workflows/ubuntu.yml: gh-actions/flavors/ubuntu.yml
+      .github/workflows/windows.yml: gh-actions/flavors/windows.yml
+  relaton-un:
+    remote: ssh://git@github.com/relaton/relaton-un
+    branch: master
+    files:
+      .github/workflows/macos.yml: gh-actions/flavors/macos.yml
+      .github/workflows/ubuntu.yml: gh-actions/flavors/ubuntu.yml
+      .github/workflows/windows.yml: gh-actions/flavors/windows.yml
+  relaton-gb:
+    remote: ssh://git@github.com/relaton/relaton-gb
+    branch: master
+    files:
+      .github/workflows/macos.yml: gh-actions/flavors/macos.yml
+      .github/workflows/ubuntu.yml: gh-actions/flavors/ubuntu.yml
+      .github/workflows/windows.yml: gh-actions/flavors/windows.yml
+  relaton-cli:
+    remote: ssh://git@github.com/relaton/relaton-cli
+    branch: master
+    files:
+      .github/workflows/macos.yml: gh-actions/flavors/macos.yml
+      .github/workflows/ubuntu.yml: gh-actions/flavors/ubuntu.yml
+      .github/workflows/windows.yml: gh-actions/flavors/windows.yml
+  relaton:
+    remote: ssh://git@github.com/relaton/relaton
+    branch: master
+    files:
+      .github/workflows/macos.yml: gh-actions/flavors/macos.yml
+      .github/workflows/ubuntu.yml: gh-actions/flavors/ubuntu.yml
+      .github/workflows/windows.yml: gh-actions/flavors/windows.yml
+  relaton-itu:
+    remote: ssh://git@github.com/relaton/relaton-itu
+    branch: master
+    files:
+      .github/workflows/macos.yml: gh-actions/flavors/macos.yml
+      .github/workflows/ubuntu.yml: gh-actions/flavors/ubuntu.yml
+      .github/workflows/windows.yml: gh-actions/flavors/windows.yml
+  relaton-ietf:
+    remote: ssh://git@github.com/relaton/relaton-ietf
+    branch: master
+    files:
+      .github/workflows/macos.yml: gh-actions/flavors/macos.yml
+      .github/workflows/ubuntu.yml: gh-actions/flavors/ubuntu.yml
+      .github/workflows/windows.yml: gh-actions/flavors/windows.yml
+  relaton-nist:
+    remote: ssh://git@github.com/relaton/relaton-nist
+    branch: master
+    files:
+      .github/workflows/macos.yml: gh-actions/flavors/macos.yml
+      .github/workflows/ubuntu.yml: gh-actions/flavors/ubuntu.yml
+      .github/workflows/windows.yml: gh-actions/flavors/windows.yml
+  relaton-ogc:
+    remote: ssh://git@github.com/relaton/relaton-ogc
+    branch: master
+    files:
+      .github/workflows/macos.yml: gh-actions/flavors/macos.yml
+      .github/workflows/ubuntu.yml: gh-actions/flavors/ubuntu.yml
+      .github/workflows/windows.yml: gh-actions/flavors/windows.yml
+  relaton-calconnect:
+    remote: ssh://git@github.com/relaton/relaton-calconnect
+    branch: master
+    files:
+      .github/workflows/macos.yml: gh-actions/flavors/macos.yml
+      .github/workflows/ubuntu.yml: gh-actions/flavors/ubuntu.yml
+      .github/workflows/windows.yml: gh-actions/flavors/windows.yml
+  iso-bib-item:
+    remote: ssh://git@github.com/relaton/iso-bib-item
+    branch: master
+    files:
+      .github/workflows/defaults.yml: gh-actions/docgen/defaults.yml
+      .github/workflows/windows.yml: gh-actions/docgen/windows.yml
+  relaton-iev:
+    remote: ssh://git@github.com/relaton/relaton-iev
+    branch: master
+    files:
+      .github/workflows/defaults.yml: gh-actions/docgen/defaults.yml
+      .github/workflows/windows.yml: gh-actions/docgen/windows.yml
+
+groups:
+  sites:
+  - relaton.com
+  - api.relaton.org
+  flavors:
+  - relaton-calconnect
+  - relaton-gb
+  - relaton-iec
+  - relaton-ietf
+  - relaton-iso
+  - relaton-iso-bib
+  - relaton-itu
+  - relaton-nist
+  - relaton-ogc
+  - relaton-omg
+  - relaton-un
+  compiling:
+  - relaton-iev
+  - iso-bib-item
+  relaton:
+  - relaton
+  - relaton-bib
+  - relaton-cli
+  models:
+  - relaton-models
+  others:
+  - relaton-release
+  - relaton-server-csd
+  - relaton-ui-designs
+
