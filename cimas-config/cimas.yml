@@ -110,12 +110,6 @@ repositories:
       .github/workflows/macos.yml: gh-actions/flavors/macos.yml
       .github/workflows/ubuntu.yml: gh-actions/flavors/ubuntu.yml
       .github/workflows/windows.yml: gh-actions/flavors/windows.yml
-  iso-bib-item:
-    remote: ssh://git@github.com/relaton/iso-bib-item
-    branch: master
-    files:
-      .github/workflows/defaults.yml: gh-actions/docgen/defaults.yml
-      .github/workflows/windows.yml: gh-actions/docgen/windows.yml
   relaton-iev:
     remote: ssh://git@github.com/relaton/relaton-iev
     branch: master
@@ -144,7 +138,6 @@ groups:
   # - relaton-un
   compiling:
   - relaton-iev
-  - iso-bib-item
   models:
   - relaton-models
   others:
