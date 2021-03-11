@@ -3,6 +3,8 @@ settings:
   reviewers:
     - andrew2net
     - ronaldtse
+  author:
+    - CAMOBAP
 
 repositories:
   relaton-bib:
@@ -152,44 +154,44 @@ repositories:
       .github/workflows/make.yml: gh-actions/model/make.yml
 groups:
   sites:
-  - relaton.com
-  - api.relaton.org
+    - relaton.com
+    - api.relaton.org
   flavors:
-  - relaton
-  - relaton-cli
-  - relaton-bib
-  - relaton-calconnect
-  - relaton-gb
-  - relaton-iec
-  - relaton-ietf
-  - relaton-iso
-  - relaton-iso-bib
-  - relaton-itu
-  - relaton-nist
-  - relaton-ogc
-  - relaton-omg
-  - relaton-un
-  - relaton-ecma
-  - relaton-bipm
-  - relaton-ieee
-  - relaton-cie
-  - relaton-iho
-  - relaton-iev
+    - relaton
+    - relaton-cli
+    - relaton-bib
+    - relaton-calconnect
+    - relaton-gb
+    - relaton-iec
+    - relaton-ietf
+    - relaton-iso
+    - relaton-iso-bib
+    - relaton-itu
+    - relaton-nist
+    - relaton-ogc
+    - relaton-omg
+    - relaton-un
+    - relaton-ecma
+    - relaton-bipm
+    - relaton-ieee
+    - relaton-cie
+    - relaton-iho
+    - relaton-iev
   models:
-  - relaton-models
-  - relaton-model-w3c
-  - relaton-model-ieee
+    - relaton-models
+    - relaton-model-w3c
+    - relaton-model-ieee
   others:
-  - relaton-release
-  - relaton-server-csd
-  - relaton-ui-designs
+    - relaton-release
+    - relaton-server-csd
+    - relaton-ui-designs
   infrastructure:
-  - oss-guides
-  - support
+    - oss-guides
+    - support
   data:
-  - relaton-data-cie
-  - relaton-data-ecma
-  - relaton-data-ietf
-  - relaton-data-itu-r
-  - relaton-data-bipm
-  - relaton-data-iho
+    - relaton-data-cie
+    - relaton-data-ecma
+    - relaton-data-ietf
+    - relaton-data-itu-r
+    - relaton-data-bipm
+    - relaton-data-iho
