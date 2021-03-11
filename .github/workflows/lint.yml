@@ -1,0 +1,23 @@
+name: lint
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: yaml lint
+        run: |
+          sudo apt-get install yamllint
+          yamllint cimas-config/
+
+      - name: shellcheck lint
+        run: |
+          sudo apt-get install shellcheck
+          shellcheck *.sh
