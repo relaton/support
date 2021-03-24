@@ -141,16 +141,22 @@ repositories:
     remote: ssh://git@github.com/relaton/relaton-models
     branch: master
     files:
+      Gemfile: gh-actions/model/Gemfile
+      Makefile: gh-actions/model/Makefile
       .github/workflows/make.yml: gh-actions/model/make.yml
   relaton-model-w3c:
     remote: ssh://git@github.com/relaton/relaton-model-w3c
     branch: master
     files:
+      Gemfile: gh-actions/model/Gemfile
+      Makefile: gh-actions/model/Makefile
       .github/workflows/make.yml: gh-actions/model/make.yml
   relaton-model-ieee:
     remote: ssh://git@github.com/relaton/relaton-model-ieee
     branch: master
     files:
+      Gemfile: gh-actions/model/Gemfile
+      Makefile: gh-actions/model/Makefile
       .github/workflows/make.yml: gh-actions/model/make.yml
 groups:
   sites:
