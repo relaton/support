@@ -131,12 +131,12 @@ repositories:
     remote: ssh://git@github.com/relaton/relaton-data-bipm
     branch: master
     files:
-      .github/workflows/crawler.yml: gh-actions/data/crawler.yml
+      .github/workflows/check_data.yml: gh-actions/data/check_data.yml
   relaton-data-iho:
     remote: ssh://git@github.com/relaton/relaton-data-iho
     branch: master
     files:
-      .github/workflows/crawler.yml: gh-actions/data/crawler.yml
+      .github/workflows/check_data.yml: gh-actions/data/check_data.yml
   relaton-models:
     remote: ssh://git@github.com/relaton/relaton-models
     branch: master
