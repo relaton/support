@@ -1,6 +1,6 @@
 ---
 settings:
-  reviewers:
+  reviewers: {}
   author:
     - CAMOBAP
 
