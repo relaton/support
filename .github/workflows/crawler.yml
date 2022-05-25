@@ -1,11 +1,11 @@
-name: Crawler
+name: crawler
 
 on:
   workflow_call:
 
 jobs:
   crawl:
-    name: ITU-R documents fetching
+    name: Documents fetching
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
