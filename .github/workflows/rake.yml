@@ -23,7 +23,16 @@ jobs:
       - if: matrix.os == 'macos-latest' && matrix.ruby == '2.5'
         run: echo BUNDLE_BUILD__DEBASE="--with-cflags=\"-Wno-error=implicit-function-declaration\"" >> $GITHUB_ENV
 
-      - uses: ruby/setup-ruby@v1
+      # https://github.com/rubygems/rubygems/issues/4360#issuecomment-775075740
+      - if: matrix.ruby == '3.0'
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: ${{ matrix.ruby }}
+          bundler-cache: true
+          rubygems: latest
+
+      - if: matrix.ruby != '3.0'
+        uses: ruby/setup-ruby@v1
         with:
           ruby-version: ${{ matrix.ruby }}
           bundler-cache: true
