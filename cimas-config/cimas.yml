@@ -1,115 +1,148 @@
 ---
 settings:
   reviewers:
-    - andrew2net
-    - ronaldtse
   author:
     - CAMOBAP
 
 repositories:
   relaton-bib:
     remote: ssh://git@github.com/relaton/relaton-bib
-    branch: master
+    branch: main
     files:
       .github/workflows/rake.yml: gh-actions/master/rake.yml
   relaton-iso-bib:
     remote: ssh://git@github.com/relaton/relaton-iso-bib
-    branch: master
+    branch: main
     files:
       .github/workflows/rake.yml: gh-actions/master/rake.yml
   relaton-iso:
     remote: ssh://git@github.com/relaton/relaton-iso
-    branch: master
+    branch: main
     files:
       .github/workflows/rake.yml: gh-actions/master/rake.yml
   relaton-omg:
     remote: ssh://git@github.com/relaton/relaton-omg
-    branch: master
+    branch: main
     files:
       .github/workflows/rake.yml: gh-actions/master/rake.yml
   relaton-iec:
     remote: ssh://git@github.com/relaton/relaton-iec
-    branch: master
+    branch: main
     files:
       .github/workflows/rake.yml: gh-actions/master/rake.yml
   relaton-un:
     remote: ssh://git@github.com/relaton/relaton-un
-    branch: master
+    branch: main
     files:
       .github/workflows/rake.yml: gh-actions/master/rake.yml
   relaton-gb:
     remote: ssh://git@github.com/relaton/relaton-gb
-    branch: master
+    branch: main
     files:
       .github/workflows/rake.yml: gh-actions/master/rake.yml
   relaton-cli:
     remote: ssh://git@github.com/relaton/relaton-cli
-    branch: master
+    branch: main
     files:
       .github/workflows/rake.yml: gh-actions/master/rake.yml
   relaton:
     remote: ssh://git@github.com/relaton/relaton
-    branch: master
+    branch: main
     files:
       .github/workflows/rake.yml: gh-actions/master/rake.yml
   relaton-itu:
     remote: ssh://git@github.com/relaton/relaton-itu
-    branch: master
+    branch: main
     files:
       .github/workflows/rake.yml: gh-actions/master/rake.yml
   relaton-ietf:
     remote: ssh://git@github.com/relaton/relaton-ietf
-    branch: master
+    branch: main
     files:
       .github/workflows/rake.yml: gh-actions/master/rake.yml
   relaton-nist:
     remote: ssh://git@github.com/relaton/relaton-nist
-    branch: master
+    branch: main
     files:
       .github/workflows/rake.yml: gh-actions/master/rake.yml
   relaton-ogc:
     remote: ssh://git@github.com/relaton/relaton-ogc
-    branch: master
+    branch: main
     files:
       .github/workflows/rake.yml: gh-actions/master/rake.yml
   relaton-calconnect:
     remote: ssh://git@github.com/relaton/relaton-calconnect
-    branch: master
+    branch: main
     files:
       .github/workflows/rake.yml: gh-actions/master/rake.yml
   relaton-ecma:
     remote: ssh://git@github.com/relaton/relaton-ecma
-    branch: master
+    branch: main
     files:
       .github/workflows/rake.yml: gh-actions/master/rake.yml
   relaton-bipm:
     remote: ssh://git@github.com/relaton/relaton-bipm
-    branch: master
+    branch: main
     files:
       .github/workflows/rake.yml: gh-actions/master/rake.yml
   relaton-iev:
     remote: ssh://git@github.com/relaton/relaton-iev
-    branch: master
+    branch: main
     files:
       .github/workflows/rake.yml: gh-actions/master/rake.yml
   relaton-ieee:
     remote: ssh://git@github.com/relaton/relaton-ieee
-    branch: master
+    branch: main
+    files:
+      .github/workflows/rake.yml: gh-actions/master/rake.yml
+  relaton-cie:
+    remote: ssh://git@github.com/relaton/relaton-cie
+    branch: main
     files:
       .github/workflows/rake.yml: gh-actions/master/rake.yml
   relaton-iho:
     remote: ssh://git@github.com/relaton/relaton-iho
-    branch: master
+    branch: main
     files:
       .github/workflows/rake.yml: gh-actions/master/rake.yml
   relaton-w3c:
     remote: ssh://git@github.com/relaton/relaton-w3c
-    branch: master
+    branch: main
+    files:
+      .github/workflows/rake.yml: gh-actions/master/rake.yml
+  relaton-doi:
+    remote: ssh://git@github.com/relaton/relaton-doi
+    branch: main
+    files:
+      .github/workflows/rake.yml: gh-actions/master/rake.yml
+  relaton-bsi:
+    remote: ssh://git@github.com/relaton/relaton-bsi
+    branch: main
+    files:
+      .github/workflows/rake.yml: gh-actions/master/rake.yml
+  relaton-cen:
+    remote: ssh://git@github.com/relaton/relaton-cen
+    branch: main
+    files:
+      .github/workflows/rake.yml: gh-actions/master/rake.yml
+  relaton-oasis:
+    remote: ssh://git@github.com/relaton/relaton-oasis
+    branch: main
+    files:
+      .github/workflows/rake.yml: gh-actions/master/rake.yml
+  relaton-3gpp:
+    remote: ssh://git@github.com/relaton/relaton-3gpp
+    branch: main
+    files:
+      .github/workflows/rake.yml: gh-actions/master/rake.yml
+  relaton-iana:
+    remote: ssh://git@github.com/relaton/relaton-iana
+    branch: main
     files:
       .github/workflows/rake.yml: gh-actions/master/rake.yml
   relaton-data-cie:
     remote: ssh://git@github.com/relaton/relaton-data-cie
-    branch: master
+    branch: main
     files:
       .github/workflows/crawler.yml: gh-actions/data/crawler.yml
   relaton-data-ietf:
@@ -137,27 +170,88 @@ repositories:
     branch: master
     files:
       .github/workflows/check_data.yml: gh-actions/data/check_data.yml
+  relaton-data-cie:
+    remote: ssh://git@github.com/relaton/relaton-data-cie
+    branch: master
+    files:
+      .github/workflows/check_data.yml: gh-actions/data/check_data.yml
+  relaton-data-calconnect:
+    remote: ssh://git@github.com/relaton/relaton-data-calconnect
+    branch: main
+    files:
+      .github/workflows/check_data.yml: gh-actions/data/check_data.yml
+  relaton-data-nist:
+    remote: ssh://git@github.com/relaton/relaton-data-nist
+    branch: main
+    files:
+      .github/workflows/check_data.yml: gh-actions/data/check_data.yml
+  relaton-data-ogc:
+    remote: ssh://git@github.com/relaton/relaton-data-ogc
+    branch: main
+    files:
+      .github/workflows/check_data.yml: gh-actions/data/check_data.yml
+  relaton-model-3gpp:
+    remote: ssh://git@github.com/relaton/relaton-model-3gpp
+    branch: main
+    files:
+      .github/workflows/check_data.yml: gh-actions/data/check_data.yml
+  relaton-model-oasis:
+    remote: ssh://git@github.com/relaton/relaton-model-oasis
+    branch: main
+    files:
+      .github/workflows/check_data.yml: gh-actions/data/check_data.yml
+  relaton-data-iso:
+    remote: ssh://git@github.com/relaton/relaton-data-iso
+    branch: main
+    files:
+      .github/workflows/check_data.yml: gh-actions/data/check_data.yml
+  relaton-data-w3c:
+    remote: ssh://git@github.com/relaton/relaton-data-w3c
+    branch: main
+    files:
+      .github/workflows/check_data.yml: gh-actions/data/check_data.yml
+  relaton-data-iana:
+    remote: ssh://git@github.com/relaton/relaton-data-iana
+    branch: main
+    files:
+      .github/workflows/check_data.yml: gh-actions/data/check_data.yml
+  relaton-data-3gpp:
+    remote: ssh://git@github.com/relaton/relaton-data-3gpp
+    branch: main
+    files:
+      .github/workflows/check_data.yml: gh-actions/data/check_data.yml
+  relaton-data-oasis:
+    remote: ssh://git@github.com/relaton/relaton-data-oasis
+    branch: main
+    files:
+      .github/workflows/check_data.yml: gh-actions/data/check_data.yml
   relaton-models:
     remote: ssh://git@github.com/relaton/relaton-models
-    branch: master
+    branch: main
     files:
       Gemfile: gh-actions/model/Gemfile
       Makefile: gh-actions/model/Makefile
       .github/workflows/make.yml: gh-actions/model/make.yml
   relaton-model-w3c:
     remote: ssh://git@github.com/relaton/relaton-model-w3c
-    branch: master
+    branch: main
     files:
       Gemfile: gh-actions/model/Gemfile
       Makefile: gh-actions/model/Makefile
       .github/workflows/make.yml: gh-actions/model/make.yml
   relaton-model-ieee:
     remote: ssh://git@github.com/relaton/relaton-model-ieee
-    branch: master
+    branch: main
     files:
       Gemfile: gh-actions/model/Gemfile
       Makefile: gh-actions/model/Makefile
       .github/workflows/make.yml: gh-actions/model/make.yml
+  relaton-render:
+    remote: ssh://git@github.com/relaton/relaton-render
+    branch: master
+    files:
+      .github/workflows/rake.yml: gh-actions/master/rake.yml
+
 groups:
   sites:
     - relaton.com
@@ -183,6 +277,11 @@ groups:
     - relaton-cie
     - relaton-iho
     - relaton-iev
+    - relaton-cen
+    - relaton-oasis
+    - relaton-3gpp
+    - relaton-iana
+    - relaton-doi
   models:
     - relaton-models
     - relaton-model-w3c
@@ -201,3 +300,13 @@ groups:
     - relaton-data-itu-r
     - relaton-data-bipm
     - relaton-data-iho
+    - relaton-data-calconnect
+    - relaton-data-nist
+    - relaton-data-w3c
+    - relaton-data-ogc
+    - relaton-data-iana
+    - relaton-data-3gpp
+    - relaton-data-oasis
+  python:
+    - relaton-py
+    - relaton-bib-py
