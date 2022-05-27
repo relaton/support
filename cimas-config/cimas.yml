@@ -219,12 +219,12 @@ repositories:
     remote: ssh://git@github.com/relaton/relaton-model-3gpp
     branch: main
     files:
-      .github/workflows/check_data.yml: gh-actions/data/check_data.yml
+      .github/workflows/make.yml: gh-actions/model/make.yml
   relaton-model-oasis:
     remote: ssh://git@github.com/relaton/relaton-model-oasis
     branch: main
     files:
-      .github/workflows/check_data.yml: gh-actions/data/check_data.yml
+      .github/workflows/make.yml: gh-actions/model/make.yml
   relaton-models:
     remote: ssh://git@github.com/relaton/relaton-models
     branch: main
