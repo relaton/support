@@ -164,42 +164,32 @@ repositories:
     remote: ssh://git@github.com/relaton/relaton-data-bipm
     branch: master
     files:
-      .github/workflows/check_data.yml: gh-actions/data/check_data.yml
+      .github/workflows/crawler.yml: gh-actions/data/crawler.yml
   relaton-data-iho:
     remote: ssh://git@github.com/relaton/relaton-data-iho
     branch: master
     files:
-      .github/workflows/check_data.yml: gh-actions/data/check_data.yml
+      .github/workflows/crawler.yml: gh-actions/data/crawler.yml
   relaton-data-cie:
     remote: ssh://git@github.com/relaton/relaton-data-cie
     branch: master
     files:
-      .github/workflows/check_data.yml: gh-actions/data/check_data.yml
+      .github/workflows/crawler.yml: gh-actions/data/crawler.yml
   relaton-data-calconnect:
     remote: ssh://git@github.com/relaton/relaton-data-calconnect
     branch: main
     files:
-      .github/workflows/check_data.yml: gh-actions/data/check_data.yml
+      .github/workflows/crawler.yml: gh-actions/data/crawler.yml
   relaton-data-nist:
     remote: ssh://git@github.com/relaton/relaton-data-nist
     branch: main
     files:
-      .github/workflows/check_data.yml: gh-actions/data/check_data.yml
+      .github/workflows/crawler.yml: gh-actions/data/crawler.yml
   relaton-data-ogc:
     remote: ssh://git@github.com/relaton/relaton-data-ogc
     branch: main
     files:
-      .github/workflows/check_data.yml: gh-actions/data/check_data.yml
-  relaton-model-3gpp:
-    remote: ssh://git@github.com/relaton/relaton-model-3gpp
-    branch: main
-    files:
-      .github/workflows/check_data.yml: gh-actions/data/check_data.yml
-  relaton-model-oasis:
-    remote: ssh://git@github.com/relaton/relaton-model-oasis
-    branch: main
-    files:
-      .github/workflows/check_data.yml: gh-actions/data/check_data.yml
+      .github/workflows/crawler.yml: gh-actions/data/crawler.yml
   relaton-data-iso:
     remote: ssh://git@github.com/relaton/relaton-data-iso
     branch: main
@@ -209,19 +199,29 @@ repositories:
     remote: ssh://git@github.com/relaton/relaton-data-w3c
     branch: main
     files:
-      .github/workflows/check_data.yml: gh-actions/data/check_data.yml
+      .github/workflows/crawler.yml: gh-actions/data/crawler.yml
   relaton-data-iana:
     remote: ssh://git@github.com/relaton/relaton-data-iana
     branch: main
     files:
-      .github/workflows/check_data.yml: gh-actions/data/check_data.yml
+      .github/workflows/crawler.yml: gh-actions/data/crawler.yml
   relaton-data-3gpp:
     remote: ssh://git@github.com/relaton/relaton-data-3gpp
     branch: main
     files:
-      .github/workflows/check_data.yml: gh-actions/data/check_data.yml
+      .github/workflows/crawler.yml: gh-actions/data/crawler.yml
   relaton-data-oasis:
     remote: ssh://git@github.com/relaton/relaton-data-oasis
+    branch: main
+    files:
+      .github/workflows/crawler.yml: gh-actions/data/crawler.yml
+  relaton-model-3gpp:
+    remote: ssh://git@github.com/relaton/relaton-model-3gpp
+    branch: main
+    files:
+      .github/workflows/check_data.yml: gh-actions/data/check_data.yml
+  relaton-model-oasis:
+    remote: ssh://git@github.com/relaton/relaton-model-oasis
     branch: main
     files:
       .github/workflows/check_data.yml: gh-actions/data/check_data.yml
@@ -286,6 +286,8 @@ groups:
     - relaton-models
     - relaton-model-w3c
     - relaton-model-ieee
+    - relaton-model-3gpp
+    - relaton-model-oasis
   others:
     - relaton-release
     - relaton-server-csd
