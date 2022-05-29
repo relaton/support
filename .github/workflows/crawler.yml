@@ -17,7 +17,8 @@ jobs:
 
       - run: bundle exec ruby crawler.rb
 
-      - name: Push data
+      - if: github.event_name != 'pull_request'
+        name: Push data
         run: |
           echo `date` > flag.txt
           git config user.name github-actions
