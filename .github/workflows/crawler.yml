@@ -17,6 +17,8 @@ jobs:
 
       - run: bundle exec ruby crawler.rb
 
+      - run: git diff
+
       - if: github.event_name != 'pull_request'
         name: Push data
         run: |
