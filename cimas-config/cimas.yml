@@ -165,6 +165,7 @@ repositories:
     branch: master
     files:
       .github/workflows/check_data.yml: gh-actions/data/check_data.yml
+      .github/workflows/crawler.yml: gh-actions/data/crawler.yml
   relaton-data-iho:
     remote: ssh://git@github.com/relaton/relaton-data-iho
     branch: master
