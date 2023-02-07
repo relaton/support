@@ -255,6 +255,11 @@ repositories:
     branch: main
     files:
       .github/workflows/crawler.yml: gh-actions/data/crawler.yml
+  rawdata-bipm-metrologia:
+    remote: ssh://git@github.com/relaton/rawdata-bipm-metrologia
+    branch: main
+    files:
+      .github/workflows/crawler.yml: gh-actions/data/crawler.yml
   relaton-model-3gpp:
     remote: ssh://git@github.com/relaton/relaton-model-3gpp
     branch: main
