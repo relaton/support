@@ -22,9 +22,17 @@ jobs:
       - if: github.event_name != 'pull_request'
         name: Push data
         run: |
-          echo `date` > flag.txt
           git config user.name github-actions
           git config user.email github-actions@github.com
+
           [ -d data ] && echo data/* | xargs git add
+
+          if git diff --cached --quiet
+          then
+            echo "Data not changed. Skip commit"
+            exit 0
+          fi
+
+          echo `date` > flag.txt
           git add flag.txt
           git diff --quiet && git diff --staged --quiet || (git commit -m 'update documents' && git push)
