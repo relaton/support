@@ -17,21 +17,25 @@ jobs:
 
       - run: bundle exec ruby crawler.rb
 
-      - run: git diff
+      - name: Diff data
+        id: diff
+        run: |
+          [ -d data ] && echo data/* | xargs git add
 
-      - if: github.event_name != 'pull_request'
+          if git diff --cached
+          then
+            echo "Data not changed. Skip commit"
+            echo "skip_commit=true" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          echo "skip_commit=false" >> $GITHUB_OUTPUT
+
+      - if: github.event_name != 'pull_request' && steps.diff.outputs.skip_commit != 'true'
         name: Push data
         run: |
           git config user.name github-actions
           git config user.email github-actions@github.com
-
-          [ -d data ] && echo data/* | xargs git add
-
-          if git diff --cached --quiet
-          then
-            echo "Data not changed. Skip commit"
-            exit 0
-          fi
 
           echo `date` > flag.txt
           git add flag.txt
