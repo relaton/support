@@ -22,7 +22,7 @@ jobs:
         run: |
           [ -d data ] && echo data/* | xargs git add
 
-          if git diff --cached
+          if git diff --cached --exit-code
           then
             echo "Data not changed. Skip commit"
             echo "skip_commit=true" >> $GITHUB_OUTPUT
