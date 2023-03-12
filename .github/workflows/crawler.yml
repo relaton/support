@@ -2,6 +2,12 @@ name: crawler
 
 on:
   workflow_call:
+    inputs:
+      args:
+        description: Extra args to pass to crawler.rb script
+        required: false
+        default: ''
+        type: string
 
 jobs:
   crawl:
@@ -15,7 +21,7 @@ jobs:
           ruby-version: 2.7
           bundler-cache: true
 
-      - run: bundle exec ruby crawler.rb
+      - run: bundle exec ruby crawler.rb ${{ inputs.args }}
 
       - name: Diff data
         id: diff
