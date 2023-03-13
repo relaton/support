@@ -28,6 +28,11 @@ jobs:
         run: |
           [ -d data ] && echo data/* | xargs git add
 
+          if [ -f index.yaml ]; then
+            zip index.zip index.yaml
+            git add index.zip index.yaml
+          fi
+
           if git diff --cached --exit-code
           then
             echo "Data not changed. Skip commit"
