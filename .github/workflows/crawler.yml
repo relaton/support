@@ -21,12 +21,19 @@ jobs:
           ruby-version: 2.7
           bundler-cache: true
 
-      - run: bundle exec ruby crawler.rb ${{ inputs.args }}
+      - run: |
+          rm -f index.yaml index.zip index-new.yaml index-new.zip
+          bundle exec ruby crawler.rb ${{ inputs.args }}
 
       - name: Diff data
         id: diff
         run: |
           [ -d data ] && echo data/* | xargs git add
+
+          if [ -f index.yaml ]; then
+            zip index.zip index.yaml
+            git add index.zip index.yaml
+          fi
 
           if git diff --cached --exit-code
           then
