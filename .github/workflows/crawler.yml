@@ -8,6 +8,10 @@ on:
         required: false
         default: ''
         type: string
+    secrets:
+      args:
+        description: Extra args to pass to crawler.rb script
+        required: false
 
 jobs:
   crawl:
@@ -23,7 +27,7 @@ jobs:
 
       - run: |
           rm -f index.yaml index.zip index-new.yaml index-new.zip
-          bundle exec ruby crawler.rb ${{ inputs.args }}
+          bundle exec ruby crawler.rb ${{ inputs.args }} ${{ secrets.args }}
 
       - name: Diff data
         id: diff
