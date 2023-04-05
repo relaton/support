@@ -8,6 +8,11 @@ on:
         required: false
         default: ''
         type: string
+      override-files:
+        description: Override files (with wget). Format url=path (multiline)
+        required: false
+        default: ''
+        type: string
     secrets:
       args:
         description: Extra args to pass to crawler.rb script
@@ -19,6 +24,20 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
+
+      - run: |
+          while read line
+          do
+            if [ "$line" = "" ]
+            then
+              continue
+            fi
+            url=${line%=*}
+            path="${line#*=}"
+            mkdir -p $(dirname "${path}")
+            wget "${url}" -O "${path}"
+          done <<< "${{ inputs.override-files }}"
+        shell: bash
 
       - uses: ruby/setup-ruby@v1
         with:
