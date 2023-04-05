@@ -269,9 +269,25 @@ repositories:
     files:
       .github/workflows/crawler.yml: gh-actions/data/crawler.yml
       .github/workflows/keep-alive.yml: gh-actions/data/keep-alive.yml
-
   relaton-data-ieee:
-    remote: ssh://git@github.com/relaton/relaton-data-oasis
+    remote: ssh://git@github.com/relaton/relaton-data-ieee
+    branch: main
+    files:
+      .github/workflows/crawler.yml: gh-actions/data/crawler.yml
+      .github/workflows/keep-alive.yml: gh-actions/data/keep-alive.yml
+  relaton-data-iec:
+    remote: ssh://git@github.com/relaton/relaton-data-iec
+    branch: main
+    files:
+      .github/workflows/keep-alive.yml: gh-actions/data/keep-alive.yml
+  relaton-data-rfcsubseries:
+    remote: ssh://git@github.com/relaton/relaton-data-rfcsubseries
+    branch: main
+    files:
+      .github/workflows/crawler.yml: gh-actions/data/crawler.yml
+      .github/workflows/keep-alive.yml: gh-actions/data/keep-alive.yml
+  relaton-data-rfcs:
+    remote: ssh://git@github.com/relaton/relaton-data-rfcs
     branch: main
     files:
       .github/workflows/crawler.yml: gh-actions/data/crawler.yml
@@ -376,6 +392,9 @@ groups:
     - relaton-data-3gpp
     - relaton-data-oasis
     - relaton-data-ieee
+    - relaton-data-iec
+    - relaton-data-rfcsubseries
+    - relaton-data-rfcs
   python:
     - relaton-py
     - relaton-bib-py
