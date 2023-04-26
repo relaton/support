@@ -9,3 +9,5 @@ on:
 jobs:
   watcher:
     uses: metanorma/ci/.github/workflows/ci-repo-watcher.yml@main
+    secrets:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
