@@ -179,6 +179,25 @@ repositories:
     files:
       .github/workflows/rake.yml: gh-actions/master/rake.yml
       .github/workflows/release.yml: gh-actions/master/release.yml
+  relaton-jis:
+    remote: ssh://git@github.com/relaton/relaton-jis
+    branch: main
+    files:
+      .github/workflows/rake.yml: gh-actions/master/rake.yml
+      .github/workflows/release.yml: gh-actions/master/release.yml
+  relaton-index:
+    remote: ssh://git@github.com/relaton/relaton-index
+    branch: main
+    files:
+      .github/workflows/rake.yml: gh-actions/master/rake.yml
+      .github/workflows/release.yml: gh-actions/master/release.yml
+  relaton-server-csd:
+    remote: ssh://git@github.com/relaton/relaton-server-csd
+    branch: master
+    files:
+      .github/workflows/rake.yml: gh-actions/master/rake.yml
+      .github/workflows/release.yml: gh-actions/master/release.yml
+  # data
   relaton-data-cie:
     remote: ssh://git@github.com/relaton/relaton-data-cie
     branch: main
@@ -298,6 +317,13 @@ repositories:
     files:
       .github/workflows/crawler.yml: gh-actions/data/crawler.yml
       .github/workflows/keep-alive.yml: gh-actions/data/keep-alive.yml
+  relaton-data-ids:
+    remote: ssh://git@github.com/relaton/relaton-data-ids
+    branch: main
+    files:
+      .github/workflows/crawler.yml: gh-actions/data/crawler.yml
+      .github/workflows/keep-alive.yml: gh-actions/data/keep-alive.yml
+  # models
   relaton-model-3gpp:
     remote: ssh://git@github.com/relaton/relaton-model-3gpp
     branch: main
@@ -329,10 +355,94 @@ repositories:
       Gemfile: gh-actions/model/Gemfile
       Makefile: gh-actions/model/Makefile
       .github/workflows/make.yml: gh-actions/model/make.yml
+  relaton-model-ogc:
+    remote: ssh://git@github.com/relaton/relaton-model-ogc
+    branch: main
+    files:
+      Gemfile: gh-actions/model/Gemfile
+      Makefile: gh-actions/model/Makefile
+      .github/workflows/make.yml: gh-actions/model/make.yml
+  relaton-model-ietf:
+    remote: ssh://git@github.com/relaton/relaton-model-ietf
+    branch: main
+    files:
+      Gemfile: gh-actions/model/Gemfile
+      Makefile: gh-actions/model/Makefile
+      .github/workflows/make.yml: gh-actions/model/make.yml
+  relaton-model-un:
+    remote: ssh://git@github.com/relaton/relaton-model-un
+    branch: main
+    files:
+      Gemfile: gh-actions/model/Gemfile
+      Makefile: gh-actions/model/Makefile
+      .github/workflows/make.yml: gh-actions/model/make.yml
+  relaton-model-itu:
+    remote: ssh://git@github.com/relaton/relaton-model-itu
+    branch: main
+    files:
+      Gemfile: gh-actions/model/Gemfile
+      Makefile: gh-actions/model/Makefile
+      .github/workflows/make.yml: gh-actions/model/make.yml
+  relaton-model-iec:
+    remote: ssh://git@github.com/relaton/relaton-model-iec
+    branch: main
+    files:
+      Gemfile: gh-actions/model/Gemfile
+      Makefile: gh-actions/model/Makefile
+      .github/workflows/make.yml: gh-actions/model/make.yml
+  relaton-model-cen:
+    remote: ssh://git@github.com/relaton/relaton-model-cen
+    branch: main
+    files:
+      Gemfile: gh-actions/model/Gemfile
+      Makefile: gh-actions/model/Makefile
+      .github/workflows/make.yml: gh-actions/model/make.yml
+  relaton-model-bsi:
+    remote: ssh://git@github.com/relaton/relaton-model-bsi
+    branch: main
+    files:
+      Gemfile: gh-actions/model/Gemfile
+      Makefile: gh-actions/model/Makefile
+      .github/workflows/make.yml: gh-actions/model/make.yml
+  relaton-model-iso:
+    remote: ssh://git@github.com/relaton/relaton-model-iso
+    branch: main
+    files:
+      Gemfile: gh-actions/model/Gemfile
+      Makefile: gh-actions/model/Makefile
+      .github/workflows/make.yml: gh-actions/model/make.yml
+  relaton-model-bipm:
+    remote: ssh://git@github.com/relaton/relaton-model-bipm
+    branch: main
+    files:
+      Gemfile: gh-actions/model/Gemfile
+      Makefile: gh-actions/model/Makefile
+      .github/workflows/make.yml: gh-actions/model/make.yml
+  relaton-model-m3aawg:
+    remote: ssh://git@github.com/relaton/relaton-model-m3aawg
+    branch: main
+    files:
+      Gemfile: gh-actions/model/Gemfile
+      Makefile: gh-actions/model/Makefile
+      .github/workflows/make.yml: gh-actions/model/make.yml
+  relaton-model-gb:
+    remote: ssh://git@github.com/relaton/relaton-model-gb
+    branch: main
+    files:
+      Gemfile: gh-actions/model/Gemfile
+      Makefile: gh-actions/model/Makefile
+      .github/workflows/make.yml: gh-actions/model/make.yml
+  relaton-model-jis:
+    remote: ssh://git@github.com/relaton/relaton-model-jis
+    branch: main
+    files:
+      Gemfile: gh-actions/model/Gemfile
+      Makefile: gh-actions/model/Makefile
+      .github/workflows/make.yml: gh-actions/model/make.yml
 
 groups:
   sites:
-    - relaton.com
+    - relaton.org
     - api.relaton.org
   flavors:
     - relaton
@@ -363,20 +473,35 @@ groups:
     - relaton-bsi
     - relaton-ccsds
     - relaton-w3c
+    - relaton-jis
     - relaton-render
+    - relaton-index
   models:
     - relaton-models
     - relaton-model-w3c
     - relaton-model-ieee
     - relaton-model-3gpp
     - relaton-model-oasis
+    - relaton-model-ogc
+    - relaton-model-ietf
+    - relaton-model-un
+    - relaton-model-itu
+    - relaton-model-iec
+    - relaton-model-cen
+    - relaton-model-bsi
+    - relaton-model-iso
+    - relaton-model-bipm
+    - relaton-model-jis
+    - relaton-model-m3aawg
+    - relaton-model-gb
   others:
     - relaton-release
     - relaton-server-csd
     - relaton-ui-designs
   infrastructure:
-    - oss-guides
     - support
+    - oss-guides
+    - relaton-release
   data:
     - relaton-data-cie
     - relaton-data-ecma
@@ -395,6 +520,21 @@ groups:
     - relaton-data-iec
     - relaton-data-rfcsubseries
     - relaton-data-rfcs
+    - relaton-data-ids
   python:
+    - relaton-py
+    - relaton-bib-py
+  ignore:
+    # sites
+    - relaton.org
+    - api.relaton.org
+    # docs
+    - relaton-ui-designs
+    - w3c-tr-archive
+    # infrastructure
+    - relaton-release
+    - support
+    - oss-guides
+    # python
     - relaton-py
     - relaton-bib-py
