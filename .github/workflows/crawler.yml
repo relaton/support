@@ -4,14 +4,22 @@ on:
   workflow_call:
     inputs:
       args:
-        description: Extra args to pass to crawler.rb script
+        description: Extra args to pass to crawler.rb script.
         required: false
         default: ''
         type: string
       override-files:
-        description: Override files (with wget). Format url=path (multiline)
+        description: Override files (with wget). Format url=path (multiline).
         required: false
         default: ''
+        type: string
+      fetch-command:
+        description: >
+          The Command that performs data fetch and 'git commit' data.
+          The `args` input will be passed as arguments to `fetch-command`
+          The data out of the 'data' directory should be committed in the script explicitly.
+        required: false
+        default: 'bundle exec ruby crawler.rb'
         type: string
     secrets:
       args:
@@ -45,13 +53,14 @@ jobs:
           bundler-cache: true
 
       - run: |
-          rm -f index.yaml index.zip index-new.yaml index-new.zip
-          bundle exec ruby crawler.rb ${{ inputs.args }} ${{ secrets.args }}
+          rm -rf data index.yaml index.zip index-new.yaml index-new.zip
+          ${{ inputs.fetch-command }} ${{ inputs.args }} ${{ secrets.args }}
 
       - name: Diff data
         id: diff
         run: |
           [ -d data ] && echo data/* | xargs git add
+          git add -u data/
 
           if [ -f index.yaml ]; then
             zip index.zip index.yaml
