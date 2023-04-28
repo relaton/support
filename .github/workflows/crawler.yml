@@ -17,7 +17,8 @@ on:
         description: >
           The Command that performs data fetch and 'git commit' data.
           The `args` input will be passed as arguments to `fetch-command`
-          The data out of the 'data' directory should be committed in the script explicitly.
+          If needed files in 'data' directory can be removed in the beginning of the script
+          Any files except 'data/*', index.yaml have to be committed explicitly
         required: false
         default: 'bundle exec ruby crawler.rb'
         type: string
@@ -53,7 +54,7 @@ jobs:
           bundler-cache: true
 
       - run: |
-          rm -rf data index.yaml index.zip index-new.yaml index-new.zip
+          rm -f index.yaml index.zip index-new.yaml index-new.zip
           ${{ inputs.fetch-command }} ${{ inputs.args }} ${{ secrets.args }}
 
       - name: Diff data
