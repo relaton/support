@@ -355,6 +355,7 @@ repositories:
       Gemfile: gh-actions/model/Gemfile
       Makefile: gh-actions/model/Makefile
       .github/workflows/make.yml: gh-actions/model/make.yml
+  # grammar only or empty
   relaton-model-ogc:
     remote: ssh://git@github.com/relaton/relaton-model-ogc
     branch: main
