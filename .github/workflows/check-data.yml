@@ -16,6 +16,9 @@ jobs:
         with:
           submodules: true
 
+      # workaround for https://github.com/actions/runner-images/issues/37
+      - run: sudo apt-get install libcurl4-openssl-dev
+
       - uses: ruby/setup-ruby@v1
         with:
           ruby-version: ${{ matrix.ruby }}
