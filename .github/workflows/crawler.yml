@@ -48,6 +48,10 @@ jobs:
           done <<< "${{ inputs.override-files }}"
         shell: bash
 
+      - run: |
+          git status
+          git diff
+
       # workaround for https://github.com/actions/runner-images/issues/37
       - run: sudo apt-get install libcurl4-openssl-dev
 
