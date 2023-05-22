@@ -48,17 +48,18 @@ jobs:
           done <<< "${{ inputs.override-files }}"
         shell: bash
 
-      - run: |
-          git status
-          git diff
-
       # workaround for https://github.com/actions/runner-images/issues/37
       - run: sudo apt-get install libcurl4-openssl-dev
 
       - uses: ruby/setup-ruby@v1
         with:
           ruby-version: 2.7
-          bundler-cache: true
+          bundler-cache: ${{ !contains(inputs.override-files, 'Gemfile') }}
+
+      - if: contains(inputs.override-files, 'Gemfile')
+        run: |
+          bundle config unset --local deployment
+          bundle install
 
       - run: |
           rm -f index.yaml index.zip index-new.yaml index-new.zip
