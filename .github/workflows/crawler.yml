@@ -71,10 +71,11 @@ jobs:
           [ -d data ] && echo data/* | xargs git add
           git add -u data/
 
-          if [ -f index.yaml ]; then
-            zip index.zip index.yaml
-            git add index.zip index.yaml
-          fi
+          for yaml in index*.yaml; do
+            zip_name="${yaml%.*}.zip"
+            zip "${zip_name}" "${yaml}"
+            git add "${zip_name}" "${yaml}"
+          done
 
           if git diff --cached --exit-code
           then
