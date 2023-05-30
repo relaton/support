@@ -71,6 +71,7 @@ jobs:
           [ -d data ] && echo data/* | xargs git add
           git add -u data/
 
+          shopt -s nullglob # https://stackoverflow.com/a/31054582/902217
           for yaml in index*.yaml; do
             zip_name="${yaml%.*}.zip"
             zip "${zip_name}" "${yaml}"
