@@ -62,7 +62,7 @@ jobs:
           bundle install
 
       - run: |
-          rm -f index*
+          [[ -n ${github.event.inputs+x} && "$github.event.inputs" == "true" ]] && rm -f index*
           ${{ inputs.fetch-command }} ${{ inputs.args }} ${{ secrets.args }}
 
       - name: Diff data
