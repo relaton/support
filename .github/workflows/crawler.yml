@@ -76,7 +76,7 @@ jobs:
           [ -d data ] && echo data/* | xargs git add
           git add -u data/
 
-          if ${{commit-indexes}}
+          if ${{ commit-indexes }}
           then
             shopt -s nullglob # https://stackoverflow.com/a/31054582/902217
             for yaml in index*.yaml; do
