@@ -1,4 +1,4 @@
-= Relaton support repository (internal!)
+= Relaton support repository
 
 
 == Purpose
