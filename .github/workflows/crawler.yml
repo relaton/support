@@ -22,6 +22,12 @@ on:
         required: false
         default: 'bundle exec ruby crawler.rb'
         type: string
+      commit-indexes:
+        description: >
+          Defines whether index files should be committed to the repository or not.
+        required: false
+        default: true
+        type: boolean
     secrets:
       args:
         description: Extra args to pass to crawler.rb script
@@ -69,13 +75,16 @@ jobs:
         run: |
           [ -d data ] && echo data/* | xargs git add
           git add -u data/
-
-          shopt -s nullglob # https://stackoverflow.com/a/31054582/902217
-          for yaml in index*.yaml; do
-            zip_name="${yaml%.*}.zip"
-            zip "${zip_name}" "${yaml}"
-            git add "${zip_name}" "${yaml}"
-          done
+          
+          if ${{ inputs.commit-indexes }}
+          then
+            shopt -s nullglob # https://stackoverflow.com/a/31054582/902217
+            for yaml in index*.yaml; do
+              zip_name="${yaml%.*}.zip"
+              zip "${zip_name}" "${yaml}"
+              git add "${zip_name}" "${yaml}"
+            done
+          fi
 
           if git diff --cached --exit-code
           then
