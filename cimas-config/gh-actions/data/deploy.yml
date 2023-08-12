@@ -9,5 +9,5 @@ on:
   workflow_dispatch:
 
 jobs:
-  crawl:
+  deploy:
     uses: relaton/support/.github/workflows/data-deploy.yml@master

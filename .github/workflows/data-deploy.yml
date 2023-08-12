@@ -2,6 +2,12 @@ name: Deploy
 
 on:
   workflow_call:
+    data-files:
+      args:
+        description: Data
+        required: false
+        default: index.yaml
+        type: string
 
 jobs:
   build_index_page:
@@ -33,6 +39,18 @@ jobs:
 
           with open('_config.yml', 'w') as file:
             yaml.dump(result_config, file)
+
+      - name: Copy data files
+        run: |
+          mkdir -p src/_data/
+          while read file
+          do
+            if [ "$file" = "" ]
+            then
+              continue
+            fi
+            cp $file src/_data/
+          done <<< "${{ inputs.data-files }}"
 
       - run: |
           cat _config.yml
