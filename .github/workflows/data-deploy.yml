@@ -34,6 +34,11 @@ jobs:
           with open('_config.yml', 'w') as file:
             yaml.dump(result_config, file)
 
+      - run: |
+          cat _config.yml
+          echo "---"
+          tree src
+
       - id: pages
         uses: actions/configure-pages@v2
 
