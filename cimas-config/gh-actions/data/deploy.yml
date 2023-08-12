@@ -1,0 +1,14 @@
+name: Deploy
+
+on:
+  push:
+    branches: [ master, main ]
+    tags: [ v* ]
+  pull_request:
+  schedule:
+  - cron: '0 14 * * *'
+  workflow_dispatch:
+
+jobs:
+  crawl:
+    uses: relaton/support/.github/workflows/data-deploy.yml@master

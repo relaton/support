@@ -1,0 +1,68 @@
+name: Deploy
+
+on:
+  push:
+    branches: [ master, main ]
+    tags: [ v* ]
+  schedule:
+  - cron: '0 15 * * *'
+  workflow_dispatch:
+
+jobs:
+  build_index_page:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.2"
+          bundler-cache: true
+          cache-version: 0
+
+      - uses: actions/checkout@v3
+        with:
+          reposiroty: relaton/jekyll-theme-relaton-data-index
+          path: src
+
+      - name: Merge _config.yml
+        shell: python
+        run: |
+          import yaml
+
+          with open('src/_config.yaml') as base_config_file, open('_config.yml') as config_file:
+            base_config = yaml.safe_load(base_config_file)
+            config = yaml.safe_load(config_file)
+
+          result_config = {**base_config, **config}
+
+          with open('_config.yml', 'w') as file:
+            yaml.dump(result_config, file)
+
+      - id: pages
+        uses: actions/configure-pages@v2
+
+      - name: Build with Jekyll
+        # Outputs to the './_site' directory by default
+        run: bundle exec jekyll build --baseurl "${{ steps.pages.outputs.base_path }}"
+        env:
+          JEKYLL_ENV: production
+
+      - uses: actions/upload-pages-artifact@v1
+
+  deploy:
+    needs: build_index_page
+
+    # Grant GITHUB_TOKEN the permissions required to make a Pages deployment
+    permissions:
+      pages: write      # to deploy to Pages
+      id-token: write   # to verify the deployment originates from an appropriate source
+
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v1
