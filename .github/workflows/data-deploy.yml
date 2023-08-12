@@ -17,7 +17,7 @@ jobs:
 
       - uses: actions/checkout@v3
         with:
-          reposiroty: relaton/jekyll-theme-relaton-data-index
+          repository: relaton/jekyll-theme-relaton-data-index
           path: src
 
       - name: Merge _config.yml
