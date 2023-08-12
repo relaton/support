@@ -2,8 +2,8 @@ name: Deploy
 
 on:
   workflow_call:
-    data-files:
-      args:
+    inputs:
+      data-files:
         description: Data
         required: false
         default: index.yaml
@@ -45,10 +45,7 @@ jobs:
           mkdir -p src/_data/
           while read file
           do
-            if [ "$file" = "" ]
-            then
-              continue
-            fi
+            if [ "$file" = "" ]; then continue; fi
             cp $file src/_data/
           done <<< "${{ inputs.data-files }}"
 
