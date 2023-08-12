@@ -287,6 +287,8 @@ repositories:
     branch: main
     files:
       .github/workflows/crawler.yml: gh-actions/data/crawler.yml
+      .github/workflows/deploy.yml: gh-actions/data/deploy.yml
+      Gemfile.deploy: gh-actions/data/Gemfile.deploy
       .github/workflows/keep-alive.yml: gh-actions/master/keep-alive.yml
   relaton-data-ieee:
     remote: ssh://git@github.com/relaton/relaton-data-ieee
