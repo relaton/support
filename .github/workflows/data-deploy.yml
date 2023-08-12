@@ -25,7 +25,7 @@ jobs:
         run: |
           import yaml
 
-          with open('src/_config.yaml') as base_config_file, open('_config.yml') as config_file:
+          with open('src/_config.yml') as base_config_file, open('_config.yml') as config_file:
             base_config = yaml.safe_load(base_config_file)
             config = yaml.safe_load(config_file)
 
