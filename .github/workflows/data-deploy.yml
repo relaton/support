@@ -1,12 +1,7 @@
 name: Deploy
 
 on:
-  push:
-    branches: [ master, main ]
-    tags: [ v* ]
-  schedule:
-  - cron: '0 15 * * *'
-  workflow_dispatch:
+  workflow_call:
 
 jobs:
   build_index_page:
@@ -51,6 +46,7 @@ jobs:
       - uses: actions/upload-pages-artifact@v1
 
   deploy:
+    if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/main'
     needs: build_index_page
 
     # Grant GITHUB_TOKEN the permissions required to make a Pages deployment
