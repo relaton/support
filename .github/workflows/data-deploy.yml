@@ -23,16 +23,22 @@ jobs:
       - name: Merge _config.yml
         shell: python
         run: |
+          import os
           import yaml
 
-          with open('src/_config.yml') as base_config_file, open('_config.yml') as config_file:
+          base_config_path = 'src/_config.yml'
+          repo_config_path = '_config.yml'
+
+          with open(base_config_path) as base_config_file, open(repo_config_path) as config_file:
             base_config = yaml.safe_load(base_config_file)
             config = yaml.safe_load(config_file)
 
           result_config = {**base_config, **config}
 
-          with open('_config.yml', 'w') as file:
+          with open(repo_config_path, 'w') as file:
             yaml.dump(result_config, file)
+
+          os.remove(base_config_path)
 
       - run: |
           cat _config.yml
