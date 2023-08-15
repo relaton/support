@@ -36,7 +36,7 @@ jobs:
           result_config = {**base_config, **config}
 
           with open(repo_config_path, 'w') as file:
-            yaml.dump(result_config, file)
+            yaml.dump(result_config, file, default_style='|')
 
           os.remove(base_config_path)
 
