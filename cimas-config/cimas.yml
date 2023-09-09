@@ -378,6 +378,14 @@ repositories:
       .github/workflows/deploy.yml: gh-actions/data/deploy.yml
       Gemfile.deploy: gh-actions/data/Gemfile.deploy
       .github/workflows/keep-alive.yml: gh-actions/master/keep-alive.yml
+  relaton-data-ccsds:
+    remote: ssh://git@github.com/relaton/relaton-data-ccsds
+    branch: main
+    files:
+      .github/workflows/crawler.yml: gh-actions/data/crawler.yml
+      .github/workflows/deploy.yml: gh-actions/data/deploy.yml
+      Gemfile.deploy: gh-actions/data/Gemfile.deploy
+      .github/workflows/keep-alive.yml: gh-actions/master/keep-alive.yml
   # models
   relaton-model-3gpp:
     remote: ssh://git@github.com/relaton/relaton-model-3gpp
@@ -586,6 +594,7 @@ groups:
     - relaton-data-rfcsubseries
     - relaton-data-rfcs
     - relaton-data-ids
+    - relaton-data-ccsds
   python:
     - relaton-py
     - relaton-bib-py
@@ -593,6 +602,7 @@ groups:
     # sites
     - relaton.org
     - api.relaton.org
+    - relaton.github.io
     # docs
     - relaton-ui-designs
     - w3c-tr-archive
