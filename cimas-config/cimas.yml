@@ -185,6 +185,18 @@ repositories:
     files:
       .github/workflows/rake.yml: gh-actions/master/rake.yml
       .github/workflows/release.yml: gh-actions/master/release.yml
+  relaton-etsi:
+    remote: ssh://git@github.com/relaton/relaton-etsi
+    branch: main
+    files:
+      .github/workflows/rake.yml: gh-actions/master/rake.yml
+      .github/workflows/release.yml: gh-actions/master/release.yml
+  relaton-isbn:
+    remote: ssh://git@github.com/relaton/relaton-isbn
+    branch: main
+    files:
+      .github/workflows/rake.yml: gh-actions/master/rake.yml
+      .github/workflows/release.yml: gh-actions/master/release.yml
   relaton-index:
     remote: ssh://git@github.com/relaton/relaton-index
     branch: main
@@ -386,6 +398,14 @@ repositories:
       .github/workflows/deploy.yml: gh-actions/data/deploy.yml
       Gemfile.deploy: gh-actions/data/Gemfile.deploy
       .github/workflows/keep-alive.yml: gh-actions/master/keep-alive.yml
+  relaton-data-etsi:
+    remote: ssh://git@github.com/relaton/relaton-data-etsi
+    branch: main
+    files:
+      .github/workflows/crawler.yml: gh-actions/data/crawler.yml
+      .github/workflows/deploy.yml: gh-actions/data/deploy.yml
+      Gemfile.deploy: gh-actions/data/Gemfile.deploy
+      .github/workflows/keep-alive.yml: gh-actions/master/keep-alive.yml
   # models
   relaton-model-3gpp:
     remote: ssh://git@github.com/relaton/relaton-model-3gpp
@@ -510,6 +530,13 @@ repositories:
       Gemfile: gh-actions/model/Gemfile
       Makefile: gh-actions/model/Makefile
       .github/workflows/make.yml: gh-actions/model/make.yml
+  relaton-model-etsi:
+    remote: ssh://git@github.com/relaton/relaton-model-ccsds
+    branch: main
+    files:
+      Gemfile: gh-actions/model/Gemfile
+      Makefile: gh-actions/model/Makefile
+      .github/workflows/make.yml: gh-actions/model/make.yml
 
 groups:
   sites:
@@ -546,6 +573,8 @@ groups:
     - relaton-ccsds
     - relaton-w3c
     - relaton-jis
+    - relaton-etsi
+    - relaton-isbn
     - relaton-render
     - relaton-index
   models:
@@ -566,6 +595,7 @@ groups:
     - relaton-model-jis
     - relaton-model-m3aawg
     - relaton-model-gb
+    - relaton-model-etsi
   others:
     - relaton-release
     - relaton-server-csd
@@ -595,6 +625,7 @@ groups:
     - relaton-data-rfcs
     - relaton-data-ids
     - relaton-data-ccsds
+    - relaton-data-etsi
   python:
     - relaton-py
     - relaton-bib-py
