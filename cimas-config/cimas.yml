@@ -221,6 +221,19 @@ repositories:
     files:
       .github/workflows/rake.yml: gh-actions/master/rake.yml
       .github/workflows/release.yml: gh-actions/master/release.yml
+  # loc
+  loc-marc:
+    remote: ssh://git@github.com/relaton/loc-marc
+    branch: main
+    files:
+      .github/workflows/rake.yml: gh-actions/master/rake.yml
+      .github/workflows/release.yml: gh-actions/master/release.yml
+  loc-mods:
+    remote: ssh://git@github.com/relaton/loc-mods
+    branch: main
+    files:
+      .github/workflows/rake.yml: gh-actions/master/rake.yml
+      .github/workflows/release.yml: gh-actions/master/release.yml
   # data
   relaton-data-cie:
     remote: ssh://git@github.com/relaton/relaton-data-cie
