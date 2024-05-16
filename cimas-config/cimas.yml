@@ -222,13 +222,13 @@ repositories:
       .github/workflows/rake.yml: gh-actions/master/rake.yml
       .github/workflows/release.yml: gh-actions/master/release.yml
   # loc
-  loc-marc:
+  loc_marc:
     remote: ssh://git@github.com/relaton/loc-marc
     branch: main
     files:
       .github/workflows/rake.yml: gh-actions/master/rake.yml
       .github/workflows/release.yml: gh-actions/master/release.yml
-  loc-mods:
+  loc_mods:
     remote: ssh://git@github.com/relaton/loc-mods
     branch: main
     files:
