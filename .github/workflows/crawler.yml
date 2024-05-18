@@ -61,7 +61,7 @@ jobs:
 
       - uses: ruby/setup-ruby@v1
         with:
-          ruby-version: 3.1
+          ruby-version: 3.2
           bundler-cache: ${{ !contains(inputs.override-files, 'Gemfile') }}
 
       - if: contains(inputs.override-files, 'Gemfile')
