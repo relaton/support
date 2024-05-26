@@ -556,7 +556,13 @@ repositories:
       Gemfile: gh-actions/model/Gemfile
       Makefile: gh-actions/model/Makefile
       .github/workflows/make.yml: gh-actions/model/make.yml
-
+  relaton-model-plateau:
+    remote: ssh://git@github.com/relaton/relaton-model-plateau
+    branch: main
+    files:
+      Gemfile: gh-actions/model/Gemfile
+      Makefile: gh-actions/model/Makefile
+      .github/workflows/make.yml: gh-actions/model/make.yml
 groups:
   sites:
     - relaton.org
@@ -615,6 +621,7 @@ groups:
     - relaton-model-m3aawg
     - relaton-model-gb
     - relaton-model-etsi
+    - relaton-model-plateau
   others:
     - relaton-release
     - relaton-server-csd
