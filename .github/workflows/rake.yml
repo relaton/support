@@ -2,7 +2,11 @@ name: rake
 
 on:
   workflow_call:
-
+    secrets:
+      pat_token:
+        required: false
 jobs:
   rake:
     uses: metanorma/ci/.github/workflows/generic-rake.yml@main
+    secrets:
+      pat_token: ${{ secrets.pat_token || github.token }}
