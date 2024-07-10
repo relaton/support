@@ -197,15 +197,9 @@ repositories:
     files:
       .github/workflows/rake.yml: gh-actions/master/rake.yml
       .github/workflows/release.yml: gh-actions/master/release.yml
-  relaton-index:
-    remote: ssh://git@github.com/relaton/relaton-index
+  relaton-plateau:
+    remote: ssh://git@github.com/relaton/relaton-plateau
     branch: main
-    files:
-      .github/workflows/rake.yml: gh-actions/master/rake.yml
-      .github/workflows/release.yml: gh-actions/master/release.yml
-  relaton-server-csd:
-    remote: ssh://git@github.com/relaton/relaton-server-csd
-    branch: master
     files:
       .github/workflows/rake.yml: gh-actions/master/rake.yml
       .github/workflows/release.yml: gh-actions/master/release.yml
@@ -218,6 +212,18 @@ repositories:
   relaton-logger:
     remote: ssh://git@github.com/relaton/relaton-logger
     branch: main
+    files:
+      .github/workflows/rake.yml: gh-actions/master/rake.yml
+      .github/workflows/release.yml: gh-actions/master/release.yml
+  relaton-index:
+    remote: ssh://git@github.com/relaton/relaton-index
+    branch: main
+    files:
+      .github/workflows/rake.yml: gh-actions/master/rake.yml
+      .github/workflows/release.yml: gh-actions/master/release.yml
+  relaton-server-csd:
+    remote: ssh://git@github.com/relaton/relaton-server-csd
+    branch: master
     files:
       .github/workflows/rake.yml: gh-actions/master/rake.yml
       .github/workflows/release.yml: gh-actions/master/release.yml
@@ -601,7 +607,8 @@ groups:
     - relaton-etsi
     - relaton-isbn
     - relaton-render
-    - relaton-index
+    - relaton-xsf
+    - relaton-plateau
   models:
     - relaton-models
     - relaton-model-w3c
@@ -623,6 +630,8 @@ groups:
     - relaton-model-etsi
     - relaton-model-plateau
   others:
+    - relaton-index
+    - relaton-logger
     - relaton-release
     - relaton-server-csd
     - relaton-ui-designs
@@ -652,6 +661,7 @@ groups:
     - relaton-data-ids
     - relaton-data-ccsds
     - relaton-data-etsi
+    - relaton-data-xsf
   python:
     - relaton-py
     - relaton-bib-py
