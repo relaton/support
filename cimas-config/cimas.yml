@@ -219,7 +219,7 @@ repositories:
     remote: ssh://git@github.com/relaton/relaton-index
     branch: main
     files:
-      .github/workflows/rake.yml: gh-actions/master/rake.yml
+      # .github/workflows/rake.yml: gh-actions/master/rake.yml custom because of dependent gems test
       .github/workflows/release.yml: gh-actions/master/release.yml
   relaton-server-csd:
     remote: ssh://git@github.com/relaton/relaton-server-csd
