@@ -12,7 +12,6 @@ on:
   repository_dispatch:
     types: [ do-release ]
 
-
 jobs:
   release:
     uses: relaton/support/.github/workflows/release.yml@main
