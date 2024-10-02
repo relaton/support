@@ -439,6 +439,12 @@ repositories:
       .github/workflows/deploy.yml: gh-actions/data/deploy.yml
       Gemfile.deploy: gh-actions/data/Gemfile.deploy
       .github/workflows/keep-alive.yml: gh-actions/master/keep-alive.yml
+  relaton-data-jis:
+    remote: ssh://git@github.com/relaton/relaton-data-jis
+    branch: main
+    files:
+      .github/workflows/crawler.yml: gh-actions/data/crawler.yml
+      .github/workflows/keep-alive.yml: gh-actions/master/keep-alive.yml
   # models
   relaton-model-3gpp:
     remote: ssh://git@github.com/relaton/relaton-model-3gpp
@@ -671,6 +677,7 @@ groups:
     - relaton-data-etsi
     - relaton-data-xsf
     - relaton-data-plateau
+    - relaton-data-jis
   python:
     - relaton-py
     - relaton-bib-py
