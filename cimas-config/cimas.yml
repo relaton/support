@@ -482,107 +482,82 @@ repositories:
     remote: ssh://git@github.com/relaton/relaton-model-ogc
     branch: main
     files:
-      Gemfile: gh-actions/model/Gemfile
-      Makefile: gh-actions/model/Makefile
-      .github/workflows/make.yml: gh-actions/model/make.yml
   relaton-model-ietf:
     remote: ssh://git@github.com/relaton/relaton-model-ietf
     branch: main
     files:
-      Gemfile: gh-actions/model/Gemfile
-      Makefile: gh-actions/model/Makefile
-      .github/workflows/make.yml: gh-actions/model/make.yml
   relaton-model-un:
     remote: ssh://git@github.com/relaton/relaton-model-un
     branch: main
     files:
-      Gemfile: gh-actions/model/Gemfile
-      Makefile: gh-actions/model/Makefile
-      .github/workflows/make.yml: gh-actions/model/make.yml
   relaton-model-itu:
     remote: ssh://git@github.com/relaton/relaton-model-itu
     branch: main
     files:
-      Gemfile: gh-actions/model/Gemfile
-      Makefile: gh-actions/model/Makefile
-      .github/workflows/make.yml: gh-actions/model/make.yml
   relaton-model-iec:
     remote: ssh://git@github.com/relaton/relaton-model-iec
     branch: main
     files:
-      Gemfile: gh-actions/model/Gemfile
-      Makefile: gh-actions/model/Makefile
-      .github/workflows/make.yml: gh-actions/model/make.yml
   relaton-model-cen:
     remote: ssh://git@github.com/relaton/relaton-model-cen
     branch: main
     files:
-      Gemfile: gh-actions/model/Gemfile
-      Makefile: gh-actions/model/Makefile
-      .github/workflows/make.yml: gh-actions/model/make.yml
   relaton-model-bsi:
     remote: ssh://git@github.com/relaton/relaton-model-bsi
     branch: main
     files:
-      Gemfile: gh-actions/model/Gemfile
-      Makefile: gh-actions/model/Makefile
-      .github/workflows/make.yml: gh-actions/model/make.yml
   relaton-model-iso:
     remote: ssh://git@github.com/relaton/relaton-model-iso
     branch: main
     files:
-      Gemfile: gh-actions/model/Gemfile
-      Makefile: gh-actions/model/Makefile
-      .github/workflows/make.yml: gh-actions/model/make.yml
   relaton-model-bipm:
     remote: ssh://git@github.com/relaton/relaton-model-bipm
     branch: main
     files:
-      Gemfile: gh-actions/model/Gemfile
-      Makefile: gh-actions/model/Makefile
-      .github/workflows/make.yml: gh-actions/model/make.yml
   relaton-model-m3aawg:
     remote: ssh://git@github.com/relaton/relaton-model-m3aawg
     branch: main
     files:
-      Gemfile: gh-actions/model/Gemfile
-      Makefile: gh-actions/model/Makefile
-      .github/workflows/make.yml: gh-actions/model/make.yml
   relaton-model-gb:
     remote: ssh://git@github.com/relaton/relaton-model-gb
     branch: main
     files:
-      Gemfile: gh-actions/model/Gemfile
-      Makefile: gh-actions/model/Makefile
-      .github/workflows/make.yml: gh-actions/model/make.yml
   relaton-model-jis:
     remote: ssh://git@github.com/relaton/relaton-model-jis
     branch: main
     files:
-      Gemfile: gh-actions/model/Gemfile
-      Makefile: gh-actions/model/Makefile
-      .github/workflows/make.yml: gh-actions/model/make.yml
   relaton-model-ccsds:
     remote: ssh://git@github.com/relaton/relaton-model-ccsds
     branch: main
     files:
-      Gemfile: gh-actions/model/Gemfile
-      Makefile: gh-actions/model/Makefile
-      .github/workflows/make.yml: gh-actions/model/make.yml
   relaton-model-etsi:
     remote: ssh://git@github.com/relaton/relaton-model-ccsds
     branch: main
     files:
-      Gemfile: gh-actions/model/Gemfile
-      Makefile: gh-actions/model/Makefile
-      .github/workflows/make.yml: gh-actions/model/make.yml
   relaton-model-plateau:
     remote: ssh://git@github.com/relaton/relaton-model-plateau
     branch: main
     files:
-      Gemfile: gh-actions/model/Gemfile
-      Makefile: gh-actions/model/Makefile
-      .github/workflows/make.yml: gh-actions/model/make.yml
+  relaton-model-nist:
+    remote: ssh://git@github.com/relaton/relaton-model-nist
+    branch: main
+    files:
+  relaton-model-iho:
+    remote: ssh://git@github.com/relaton/relaton-model-iho
+    branch: main
+    files:
+  relaton-model-cc:
+    remote: ssh://git@github.com/relaton/relaton-model-cc
+    branch: main
+    files:
+  relaton-model-ribose:
+    remote: ssh://git@github.com/relaton/relaton-model-ribose
+    branch: main
+    files:
+  relaton-model-csa:
+    remote: ssh://git@github.com/relaton/relaton-model-csa
+    branch: main
+    files:
 groups:
   sites:
     - relaton.org
@@ -643,6 +618,11 @@ groups:
     - relaton-model-gb
     - relaton-model-etsi
     - relaton-model-plateau
+    - relaton-model-nist
+    - relaton-model-iho
+    - relaton-model-cc
+    - relaton-model-ribose
+    - relaton-model-csa
   others:
     - relaton-index
     - relaton-logger
