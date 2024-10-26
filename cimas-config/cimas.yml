@@ -227,6 +227,12 @@ repositories:
     files:
       .github/workflows/rake.yml: gh-actions/master/rake.yml
       .github/workflows/release.yml: gh-actions/master/release.yml
+  ieee-idams:
+    remote: ssh://git@github.com/relaton/ieee-idams
+    branch: main
+    files:
+      .github/workflows/rake.yml: gh-actions/master/rake.yml
+      .github/workflows/release.yml: gh-actions/master/release.yml
   # loc
   loc_marc:
     remote: ssh://git@github.com/relaton/loc-marc
