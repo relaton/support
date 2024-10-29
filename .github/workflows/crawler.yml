@@ -75,7 +75,7 @@ jobs:
       - name: Diff data
         id: diff
         run: |
-          git add index*.yaml
+          git add index*.yaml || true
 
           if [ $(git diff --name-only HEAD | grep -vE '\.zip$' | wc -l) -eq 0 ]
           then
