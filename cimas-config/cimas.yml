@@ -685,3 +685,5 @@ groups:
     # other
     - jekyll-theme-relaton-data-index
     - branding
+    # paneron site builder
+    - data-sdo-metadata
