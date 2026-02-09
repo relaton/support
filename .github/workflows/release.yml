@@ -17,7 +17,7 @@ on:
 # Allow the called workflow to request OIDC
 permissions:
   id-token: write
-  contents: read
+  contents: write
 
 jobs:
   release:
