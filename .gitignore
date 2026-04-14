@@ -1,3 +1,4 @@
 .DS_Store
 
 bin/gh-repo-manifest
+.claude/settings.local.json
