@@ -1,0 +1,45 @@
+name: keep-alive
+
+on:
+  workflow_call:
+    inputs:
+      workflows:
+        description: >
+          Space-separated list of workflow filenames to re-enable (e.g. "crawler.yml release.yml").
+          If empty (default), every workflow in the calling repo is re-enabled.
+        required: false
+        default: ''
+        type: string
+      exclude:
+        description: >
+          Space-separated list of workflow filenames to skip when `workflows` is empty.
+        required: false
+        default: ''
+        type: string
+
+jobs:
+  keep-alive:
+    name: Keep alive GHA
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+    steps:
+      - name: Re-enable workflows via API
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          WORKFLOWS: ${{ inputs.workflows }}
+          EXCLUDE: ${{ inputs.exclude }}
+        run: |
+          set -euo pipefail
+          if [ -z "$WORKFLOWS" ]; then
+            WORKFLOWS=$(gh api "/repos/$REPO/actions/workflows" --paginate \
+              --jq '.workflows[].path | sub("^\\.github/workflows/"; "")' \
+              | tr '\n' ' ')
+          fi
+          for wf in $WORKFLOWS; do
+            case " $EXCLUDE " in *" $wf "*) echo "Skipping $wf"; continue ;; esac
+            echo "Re-enabling $wf"
+            gh api -X PUT "/repos/$REPO/actions/workflows/$wf/enable" \
+              || echo "  (warning: could not re-enable $wf)"
+          done
