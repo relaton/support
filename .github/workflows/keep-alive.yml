@@ -5,14 +5,16 @@ on:
     inputs:
       workflows:
         description: >
-          Space-separated list of workflow filenames to re-enable (e.g. "crawler.yml release.yml").
-          If empty (default), every workflow in the calling repo is re-enabled.
+          Space-separated list of workflow filenames or numeric IDs to re-enable
+          (e.g. "crawler.yml release.yml"). If empty (default), every workflow
+          in the calling repo is auto-discovered and re-enabled.
         required: false
         default: ''
         type: string
       exclude:
         description: >
-          Space-separated list of workflow filenames to skip when `workflows` is empty.
+          Space-separated list of workflow filenames to skip during auto-discovery.
+          Ignored when `workflows` is set explicitly.
         required: false
         default: ''
         type: string
@@ -32,14 +34,23 @@ jobs:
           EXCLUDE: ${{ inputs.exclude }}
         run: |
           set -euo pipefail
-          if [ -z "$WORKFLOWS" ]; then
-            WORKFLOWS=$(gh api "/repos/$REPO/actions/workflows" --paginate \
-              --jq '.workflows[].path | sub("^\\.github/workflows/"; "")' \
-              | tr '\n' ' ')
+          enable() {
+            local ref="$1" label="$2"
+            echo "Re-enabling $label"
+            if ! gh api -X PUT "/repos/$REPO/actions/workflows/$ref/enable"; then
+              echo "  (warning: could not re-enable $label)"
+            fi
+          }
+          if [ -n "$WORKFLOWS" ]; then
+            for wf in $WORKFLOWS; do enable "$wf" "$wf"; done
+          else
+            # Auto-discover by numeric id (handles dynamic workflows like CodeQL
+            # whose path is not under .github/workflows/ and cannot be enabled by name)
+            gh api "/repos/$REPO/actions/workflows" --paginate \
+              --jq '.workflows[] | "\(.id)\t\(.path)"' \
+              | while IFS=$'\t' read -r id path; do
+                  name="${path#.github/workflows/}"
+                  case " $EXCLUDE " in *" $name "*) echo "Skipping $name"; continue ;; esac
+                  enable "$id" "$path"
+                done
           fi
-          for wf in $WORKFLOWS; do
-            case " $EXCLUDE " in *" $wf "*) echo "Skipping $wf"; continue ;; esac
-            echo "Re-enabling $wf"
-            gh api -X PUT "/repos/$REPO/actions/workflows/$wf/enable" \
-              || echo "  (warning: could not re-enable $wf)"
-          done
