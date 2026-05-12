@@ -14,6 +14,10 @@ on:
     secrets:
       pat_token:
         required: false
+
+permissions:
+  contents: write
+
 jobs:
   rake:
     uses: metanorma/ci/.github/workflows/generic-rake.yml@main
