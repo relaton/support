@@ -10,6 +10,11 @@ source "https://rubygems.org"
 # Happy Jekylling!
 gem "jekyll", "~> 4.3.2"
 
+# Ruby 3.4 dropped csv from the default gems; jekyll requires it at load time,
+# so it must be an explicit bundle dependency or `bundle exec jekyll` fails with
+# a LoadError.
+gem "csv"
+
 # This is the default theme for new Jekyll sites. You may change this to anything you like.
 gem "minima" # , "~> 2.0"
 # gem "jekyll-theme-minimal"
