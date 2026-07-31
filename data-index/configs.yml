@@ -1,0 +1,50 @@
+---
+# Source of truth for each relaton-data-* repo's Jekyll Pages index `_config.yml`.
+#
+# `bin/gen-data-index-config` renders one `_config.yml` per entry; a maintainer
+# commits the result into the corresponding data repo (see data-index/README.adoc).
+#
+# Per entry:
+#   repo        - relaton-data-<repo> (also the raw.githubusercontent path segment)
+#   display     - human name used in the title/description
+#   source      - the published INDEXFILE the current relaton consumer reads
+#   branch      - the repo's real default branch (drives baseurl + Cimas target)
+#   pubid_class - external Pubid::<Flavor>::Identifier for pubid-structured indexes;
+#                 omit/blank for flat indexes whose :id is a plain string.
+#                 MUST match the `pubid_class:` the flavor passes to
+#                 Relaton::Index.find_or_create in relaton's lib/relaton/<flavor>/data_fetcher.rb.
+#                 No leading "::" — the theme plugin resolves it with Object.const_get.
+
+defaults:
+  paginate: 100
+  pubid_require: pubid
+  favicon: 'https://www.relaton.org/favicon.ico'
+  baseurl_template: 'https://raw.githubusercontent.com/relaton/relaton-data-%<repo>s/%<branch>s/'
+  description_template: 'Welcome to the %<display>s standards index site!'
+
+repos:
+  - { repo: 3gpp,         display: 3GPP,          source: index-v1.yaml, branch: v2,   pubid_class: }
+  - { repo: adobe,        display: Adobe,         source: index-v2.yaml, branch: main, pubid_class: Pubid::Adobe::Identifier }
+  - { repo: bipm,         display: BIPM,          source: index-v1.yaml, branch: v2,   pubid_class: }
+  - { repo: calconnect,   display: CalConnect,    source: index-v1.yaml, branch: v2,   pubid_class: }
+  - { repo: ccsds,        display: CCSDS,         source: index-v2.yaml, branch: v2,   pubid_class: Pubid::Ccsds::Identifier }
+  - { repo: cie,          display: CIE,           source: index-v2.yaml, branch: v2,   pubid_class: Pubid::Cie::Identifier }
+  - { repo: easc,         display: EASC,          source: index-v2.yaml, branch: main, pubid_class: Pubid::Easc::Identifier }
+  - { repo: ecma,         display: ECMA,          source: index-v1.yaml, branch: v2,   pubid_class: }
+  - { repo: etsi,         display: ETSI,          source: index-v2.yaml, branch: v2,   pubid_class: Pubid::Etsi::Identifier }
+  - { repo: gost,         display: GOST,          source: index-v2.yaml, branch: main, pubid_class: Pubid::Gost::Identifier }
+  - { repo: iana,         display: IANA,          source: index-v1.yaml, branch: v2,   pubid_class: }
+  - { repo: iec,          display: IEC,           source: index-v2.yaml, branch: v2,   pubid_class: Pubid::Iec::Identifier }
+  - { repo: ieee,         display: IEEE,          source: index-v2.yaml, branch: v2,   pubid_class: Pubid::Ieee::Identifier }
+  - { repo: iho,          display: IHO,           source: index-v3.yaml, branch: v2,   pubid_class: Pubid::Iho::Identifier }
+  - { repo: iso,          display: ISO,           source: index-v2.yaml, branch: v2,   pubid_class: Pubid::Iso::Identifier }
+  - { repo: itu-r,        display: ITU-R,         source: index-v2.yaml, branch: v2,   pubid_class: Pubid::Itu::Identifier }
+  - { repo: jcgm,         display: JCGM,          source: index-v1.yaml, branch: main, pubid_class: Pubid::Jcgm::Identifier }
+  - { repo: jis,          display: JIS,           source: index-v2.yaml, branch: v2,   pubid_class: Pubid::Jis::Identifier }
+  - { repo: nist,         display: NIST,          source: index-v2.yaml, branch: v2,   pubid_class: Pubid::Nist::Identifier }
+  - { repo: ogc,          display: OGC,           source: index-v1.yaml, branch: v2,   pubid_class: }
+  - { repo: oiml,         display: OIML,          source: index-v2.yaml, branch: main, pubid_class: Pubid::Oiml::Identifier }
+  - { repo: plateau,      display: PLATEAU,       source: index-v2.yaml, branch: v2,   pubid_class: Pubid::Plateau::Identifier }
+  - { repo: rfcs,         display: RFC,           source: index-v1.yaml, branch: v2,   pubid_class: }
+  - { repo: rfcsubseries, display: RFC Subseries, source: index-v1.yaml, branch: v2,   pubid_class: }
+  - { repo: xsf,          display: XSF,           source: index-v1.yaml, branch: v2,   pubid_class: }

@@ -12,6 +12,9 @@ the Git repositories belonging to https://github.com/relaton[Relaton].
 
 `cimas-config/`:: configuration files for https://github.com/relaton/cimas[Cimas]
 
+`data-index/`:: source of truth + generator for the `relaton-data-*` GitHub Pages
+  index `_config.yml` files (relaton/relaton#48). See `data-index/README.adoc`.
+
 `bin/gh-repo-manifest`:: (to be updated) script that generates/updates the
   `cimas-config/cimas.yml` file for the
   https://github.com/relaton[GitHub relaton organization]

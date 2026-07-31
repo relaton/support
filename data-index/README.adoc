@@ -1,0 +1,90 @@
+= relaton-data-* GitHub Pages index configs
+
+Source of truth for the per-repo Jekyll Pages `_config.yml` that gives each
+`relaton-data-*` repo an index site (relaton/relaton#48).
+
+The site is built by the shared reusable workflow
+`relaton/support/.github/workflows/data-deploy.yml`, which checks out the theme
+https://github.com/relaton/jekyll-theme-relaton-data-index[jekyll-theme-relaton-data-index],
+merges the theme's base `_config.yml` with the repo's own (repo values win), runs
+`jekyll build`, and deploys to Pages.
+
+== Files
+
+`configs.yml`:: The verified per-repo table: `repo`, `display`, `source`
+  (published INDEXFILE the current relaton consumer reads), `branch` (the repo's
+  real default branch — drives `baseurl`), and `pubid_class` (blank for flat
+  indexes). Edit this to change any repo's config.
+`../bin/gen-data-index-config`:: Renders a repo's `_config.yml` from `configs.yml`.
+
+== Why `_config.yml` lives in each data repo (not Cimas)
+
+`_config.yml` is unique per repo and is *repo-owned* — exactly like
+`relaton-data-oasis`, `-w3c`, and `-ids` already keep theirs. Cimas manages only
+the byte-identical plumbing (`deploy.yml`, `Gemfile.deploy`). This generator is the
+single place the per-repo configs are produced; the output is committed into each
+data repo, where a maintainer may further tune it without a central clobber.
+
+== The pubid rule
+
+The theme plugin renders a structured index `:id` (a Hash) by instantiating a
+flavor class. `pubid_class` therefore must match the class relaton uses for that
+flavor's index in `relaton/lib/relaton/<flavor>/data_fetcher.rb`
+(`Relaton::Index.find_or_create(..., pubid_class:)`) — the external
+`Pubid::<Flavor>::Identifier`. Write it *without* a leading `::` (the plugin
+resolves it via `Object.const_get`). Flat indexes whose `:id` is a plain string
+take no `pubid_*` keys.
+
+== Rendering readiness (verified against published indexes)
+
+[WARNING]
+====
+The current theme plugin renders a Hash `:id` with `pubid_class.new(**id)`, but the
+external `Pubid::<Flavor>::Identifier` names are *modules with no `.new`*, and the
+published v2 indexes store `_type:`-tagged nested hashes (relaton-index itself
+reconstructs them with `.create`, not `.new`). So sites for the pubid flavors build
+empty until the theme is updated. Tracked in the hand-off
+`relaton__jekyll-theme-relaton-data-index__render-pubid-structured-ids.md`.
+====
+
+[cols="1,3",options="header"]
+|===
+| Tier | Repos
+
+| *A — renders today* (string `:id`)
+| 3gpp, ogc, xsf, rfcs, rfcsubseries, calconnect, iana
+
+| *B — builds, rows show a raw hash* (flat Hash `:id`, no pubid class)
+| bipm, ecma
+
+| *C — needs the theme fix* (external-pubid `_type` Hash `:id`)
+| adobe, ccsds, cie, easc, etsi, gost, iec, ieee, iho, iso, itu-r, jcgm, jis, nist, oiml, plateau
+|===
+
+== Rollout
+
+. Enable GitHub Pages (source: *GitHub Actions*) on the target repo.
+. Generate and commit the config onto the repo's default branch:
++
+[source,sh]
+----
+# print one repo's config
+bin/gen-data-index-config iso
+
+# or write files for several repos into a dir
+bin/gen-data-index-config --out /tmp/cfg 3gpp ogc xsf
+# then copy /tmp/cfg/<repo>_config.yml -> <data repo>/_config.yml and commit
+----
+. Roll the Cimas plumbing (`deploy.yml`, `Gemfile.deploy`) to every data repo:
++
+[source,sh]
+----
+# from the support repo root, per cimas-config usage in ../README.adoc
+cimas sync -f $CIMAS_CONFIG -r $CIMAS_WD -d $CIMAS_MASTER_DIR -g data
+cimas push -f $CIMAS_CONFIG -r $CIMAS_WD -b data-pages -m 'Pages deploy' -g data
+----
+. Confirm the `Deploy` workflow goes green and the site lists DocID -> file with
+  working pagination.
+
+TIP: Start with Tier A (renders cleanly today); hold Tier B/C until the theme
+hand-off lands.
