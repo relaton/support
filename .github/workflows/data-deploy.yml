@@ -6,6 +6,13 @@ on:
 jobs:
   build_index_page:
     runs-on: ubuntu-latest
+    # Resolve gems against the data repo's Gemfile.deploy (Cimas-synced), which
+    # layers Jekyll on top of the repo's own relaton + pubid pins. Both the
+    # setup-ruby bundler-cache install and `bundle exec jekyll build` honor
+    # BUNDLE_GEMFILE, so the whole job gets Jekyll AND pubid in one bundle. The
+    # data repo is checkout #1 at the workspace root, so the file lives there.
+    env:
+      BUNDLE_GEMFILE: ${{ github.workspace }}/Gemfile.deploy
     steps:
       - uses: actions/checkout@v4
 

@@ -37,14 +37,17 @@ take no `pubid_*` keys.
 
 == Rendering readiness (verified against published indexes)
 
-[WARNING]
+[NOTE]
 ====
-The current theme plugin renders a Hash `:id` with `pubid_class.new(**id)`, but the
-external `Pubid::<Flavor>::Identifier` names are *modules with no `.new`*, and the
-published v2 indexes store `_type:`-tagged nested hashes (relaton-index itself
-reconstructs them with `.create`, not `.new`). So sites for the pubid flavors build
-empty until the theme is updated. Tracked in the hand-off
-`relaton__jekyll-theme-relaton-data-index__render-pubid-structured-ids.md`.
+The theme plugin now reconstructs a `_type:`-tagged Hash `:id` via
+`Pubid::<Flavor>::Identifier.from_hash(...)` (hand-off
+`relaton__jekyll-theme-relaton-data-index__render-pubid-structured-ids.md`, landed) and
+degrades to a compact fallback string if that gem is missing. For real DocIDs the pubid
+gem must therefore be in the *build* bundle — which is why the deploy bundle
+(`cimas-config/gh-actions/data/Gemfile.deploy`) `eval_gemfile`s each data repo's own
+Gemfile to layer Jekyll on top of that repo's relaton + pubid pins. With both in one
+bundle, the tier-C flavors below render citable DocIDs rather than a fallback like
+`2010 IEC IEC`.
 ====
 
 [cols="1,3",options="header"]
