@@ -1,13 +1,22 @@
-source "https://rubygems.org"
+# frozen_string_literal: true
 
-# Hello! This is where you manage which Jekyll version is used to run.
-# When you want to use a different version, change it below, save the
-# file and run `bundle install`. Run Jekyll with `bundle exec`, like so:
+# Deploy-time bundle for the GitHub Pages index build (data-deploy.yml).
 #
-#     bundle exec jekyll serve
+# The reusable workflow points BUNDLE_GEMFILE at this file, so this is the ONE
+# bundle `bundle exec jekyll build` resolves against. It layers the Jekyll
+# toolchain on top of the data repo's OWN Gemfile: `eval_gemfile` pulls in that
+# repo's relaton + pubid pins (each relaton-data-* repo already pins the right
+# flavor of `pubid`). That gives the build BOTH Jekyll AND pubid in one bundle,
+# so the theme's jekyll-index plugin can reconstruct pubid-structured DocIDs
+# (Pubid::<Flavor>::Identifier.from_hash(...)) instead of degrading to a compact
+# fallback id. One shared file works for every flavor — no per-repo pins are
+# duplicated here, so this stays byte-identical Cimas plumbing.
 #
-# This will help ensure the proper Jekyll version is running.
-# Happy Jekylling!
+# No `source` line: the eval'd repo Gemfile already declares rubygems.org, and a
+# second primary source triggers bundler's multi-source warning.
+eval_gemfile File.expand_path("Gemfile", __dir__)
+
+# Jekyll itself. Keep this version aligned with the theme's expectations.
 gem "jekyll", "~> 4.3.2"
 
 # Ruby 3.4 dropped csv from the default gems; jekyll requires it at load time,
@@ -15,18 +24,14 @@ gem "jekyll", "~> 4.3.2"
 # a LoadError.
 gem "csv"
 
-# This is the default theme for new Jekyll sites. You may change this to anything you like.
-gem "minima" # , "~> 2.0"
-# gem "jekyll-theme-minimal"
+# kramdown v2 ships without the gfm parser by default.
+gem "kramdown-parser-gfm"
 
-# If you want to use GitHub Pages, remove the "gem "jekyll"" above and
-# uncomment the line below. To upgrade, run `bundle update github-pages`.
-# gem "github-pages", group: :jekyll_plugins
+gem "webrick", "~> 1.7"
 
 # If you have any plugins, put them here!
 group :jekyll_plugins do
-  # gem "jekyll-feed", "~> 0.6"
-  gem 'jekyll-paginate'
+  gem "jekyll-paginate"
 end
 
 # Windows does not include zoneinfo files, so bundle the tzinfo-data gem
@@ -39,12 +44,6 @@ end
 # Performance-booster for watching directories on Windows
 gem "wdm", "~> 0.1.0", :install_if => Gem.win_platform?
 
-# kramdown v2 ships without the gfm parser by default. If you're using
-# kramdown v1, comment out this line.
-gem "kramdown-parser-gfm"
-
-# Lock `http_parser.rb` gem to `v0.6.x` on JRuby builds since newer versions of the gem
-# do not have a Java counterpart.
+# Lock `http_parser.rb` gem to `v0.6.x` on JRuby builds since newer versions of
+# the gem do not have a Java counterpart.
 gem "http_parser.rb", "~> 0.6.0", :platforms => [:jruby]
-
-gem "webrick", "~> 1.7"
