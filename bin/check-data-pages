@@ -1,0 +1,140 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+# Confirm each relaton-data-* GitHub Pages index site is live. For every repo in
+# data-index/configs.yml this checks two URLs and prints their HTTP status:
+#
+#   site      - https://relaton.github.io/relaton-data-<repo>/  (the Pages site)
+#   raw-index - <baseurl><source>  (the index the theme plugin fetches at build
+#               time; a 404 here is why a built site can render empty)
+#
+# Exits non-zero if any checked URL is not 200, so it doubles as a rollout gate.
+# This is the operator's "confirm each site returns 200" step: run it AFTER the
+# Cimas push + _config.yml commits + Pages enablement have landed.
+#
+# Usage:
+#   bin/check-data-pages                     # check every repo (site + raw-index)
+#   bin/check-data-pages iso ieee            # check only these repos
+#   bin/check-data-pages --raw-only          # skip the Pages site, check raw-index
+#   bin/check-data-pages --site-only         # skip raw-index, check the Pages site
+#   bin/check-data-pages --base https://data.relaton.org  # custom Pages host
+#   bin/check-data-pages --list              # list known repos and exit
+#   bin/check-data-pages --config PATH ...   # use an alternate configs.yml
+
+require "optparse"
+require "net/http"
+require "uri"
+
+require_relative "../lib/data_index_config"
+
+options = {
+  config: DataIndexConfig::DEFAULT_CONFIG_PATH,
+  base: DataIndexConfig::PAGES_HOST,
+  list: false,
+  site: true,
+  raw: true,
+  timeout: 15,
+}
+parser = OptionParser.new do |o|
+  o.banner = "Usage: bin/check-data-pages [repo...] [options]"
+  o.on("--base HOST", "Pages host (default #{DataIndexConfig::PAGES_HOST})") { |v| options[:base] = v }
+  o.on("--site-only", "Check only the Pages site URL") { options[:raw] = false }
+  o.on("--raw-only", "Check only the raw-index URL") { options[:site] = false }
+  o.on("--timeout SECONDS", Integer, "Per-request timeout (default 15)") { |v| options[:timeout] = v }
+  o.on("--config PATH", "Path to configs.yml") { |v| options[:config] = v }
+  o.on("--list", "List known repos and exit") { options[:list] = true }
+  o.on("-h", "--help", "Show this help") do
+    puts o
+    exit
+  end
+end
+parser.parse!(ARGV)
+
+if !options[:site] && !options[:raw]
+  warn "nothing to check: --site-only and --raw-only are mutually exclusive"
+  exit 2
+end
+
+config = DataIndexConfig.load(options[:config])
+known = config.repos.map { |e| e["repo"] }
+
+if options[:list]
+  puts known
+  exit
+end
+
+selected = ARGV.empty? ? known : ARGV.dup
+unknown = selected - known
+unless unknown.empty?
+  warn "unknown repo(s): #{unknown.join(', ')}"
+  warn "known repos: #{known.join(', ')}"
+  exit 1
+end
+
+# Follow up to a few redirects (custom Pages domains 301 to https/apex) and
+# return the final numeric status, or a short error token on a network failure.
+def http_status(url, timeout:, hops: 5)
+  uri = URI.parse(url)
+  return "BADURI" unless uri.is_a?(URI::HTTP)
+
+  http = Net::HTTP.new(uri.host, uri.port)
+  http.use_ssl = (uri.scheme == "https")
+  http.open_timeout = timeout
+  http.read_timeout = timeout
+  # Pass a block so Net::HTTP hands back the response without buffering the body
+  # (we only need the status + Location; index files can be large).
+  res = http.request_get(uri.request_uri) { |_response| }
+  code = res.code.to_i
+  if [301, 302, 307, 308].include?(code) && hops.positive? && res["location"]
+    return http_status(URI.join(url, res["location"]).to_s, timeout: timeout, hops: hops - 1)
+  end
+
+  code
+rescue StandardError => e
+  "ERR:#{e.class.to_s.split('::').last}"
+end
+
+checks = []
+checks << :site if options[:site]
+checks << :raw if options[:raw]
+
+# Precompute the URLs once (also lets us size each column to its widest URL so
+# the status/URL columns line up regardless of repo-name or URL length).
+site_urls = options[:site] ? selected.to_h { |r| [r, config.pages_url(r, base: options[:base])] } : {}
+raw_urls = options[:raw] ? selected.to_h { |r| [r, config.raw_index_url(r)] } : {}
+
+repo_w = ([4] + selected.map(&:length)).max # 4 = len("repo")
+site_w = (site_urls.values.map(&:length) + [0]).max
+
+header = format("%-#{repo_w}s", "repo")
+header += "  #{format('%-4s', 'site')} #{format("%-#{site_w}s", '')}" if options[:site]
+header += "  raw-index" if options[:raw]
+puts header
+puts "-" * header.length
+
+failures = 0
+selected.each do |repo|
+  row = format("%-#{repo_w}s", repo)
+  statuses = {}
+
+  if options[:site]
+    st = http_status(site_urls[repo], timeout: options[:timeout])
+    statuses[:site] = st
+    row += "  #{format('%-4s', st)} #{format("%-#{site_w}s", site_urls[repo])}"
+  end
+
+  if options[:raw]
+    st = http_status(raw_urls[repo], timeout: options[:timeout])
+    statuses[:raw] = st
+    row += "  #{format('%-4s', st)} #{raw_urls[repo]}"
+  end
+
+  puts row
+  failures += 1 unless checks.all? { |k| statuses[k] == 200 }
+end
+
+if failures.positive?
+  warn "\n#{failures} repo(s) not fully 200"
+  exit 1
+end
+puts "\nall #{selected.size} repo(s) return 200"

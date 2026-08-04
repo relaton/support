@@ -1,0 +1,9 @@
+title: Internet-Drafts Index
+description: >-
+  Bibliographic data information for Internet-Drafts in Relaton format
+paginate: 100
+jekyll-index:
+  favicon: 'https://www.ietf.org/static/img/ietf-logo.dc9646b3c716.svg'
+  source: 'index-v1.yaml'
+  baseurl: 'https://raw.githubusercontent.com/relaton/relaton-data-ids/v2/'
+  add_type_to_reference: true

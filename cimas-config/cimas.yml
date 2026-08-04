@@ -340,7 +340,7 @@ repositories:
       .github/workflows/keep-alive.yml: gh-actions/master/keep-alive.yml
   relaton-data-w3c:
     remote: ssh://git@github.com/relaton/relaton-data-w3c
-    branch: main
+    branch: v2
     files:
       .github/workflows/crawler.yml: gh-actions/data/crawler.yml
       .github/workflows/deploy.yml: gh-actions/data/deploy.yml
@@ -364,7 +364,7 @@ repositories:
       .github/workflows/keep-alive.yml: gh-actions/master/keep-alive.yml
   relaton-data-oasis:
     remote: ssh://git@github.com/relaton/relaton-data-oasis
-    branch: main
+    branch: v2
     files:
       .github/workflows/crawler.yml: gh-actions/data/crawler.yml
       .github/workflows/deploy.yml: gh-actions/data/deploy.yml
@@ -409,7 +409,7 @@ repositories:
       .github/workflows/keep-alive.yml: gh-actions/master/keep-alive.yml
   relaton-data-ids:
     remote: ssh://git@github.com/relaton/relaton-data-ids
-    branch: main
+    branch: v2
     files:
       .github/workflows/crawler.yml: gh-actions/data/crawler.yml
       .github/workflows/deploy.yml: gh-actions/data/deploy.yml

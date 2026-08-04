@@ -14,6 +14,12 @@
 #                 MUST match the `pubid_class:` the flavor passes to
 #                 Relaton::Index.find_or_create in relaton's lib/relaton/<flavor>/data_fetcher.rb.
 #                 No leading "::" — the theme plugin resolves it with Object.const_get.
+#
+# Optional per-entry overrides (fall back to the defaults/template when absent) —
+# used by the already-live ids/oasis/w3c to keep their own branding:
+#   favicon        - override defaults.favicon
+#   description     - override the templated "Welcome to the <display> ..." line
+#   pubid_require   - override defaults.pubid_require (w3c uses relaton/w3c/pubid)
 
 defaults:
   paginate: 100
@@ -48,3 +54,37 @@ repos:
   - { repo: rfcs,         display: RFC,           source: index-v1.yaml, branch: v2,   pubid_class: }
   - { repo: rfcsubseries, display: RFC Subseries, source: index-v1.yaml, branch: v2,   pubid_class: }
   - { repo: xsf,          display: XSF,           source: index-v1.yaml, branch: v2,   pubid_class: }
+
+  # Already-live repos (their sites returned 200 before this generator existed).
+  # Folded in so the generator covers all 28; they carry per-repo favicon/
+  # description overrides (and w3c a non-default pubid_require). branch: v2 is
+  # each repo's real default (index-v1.yaml is served from v2).
+  - repo: ids
+    display: Internet-Drafts
+    source: index-v1.yaml
+    branch: v2
+    pubid_class:
+    favicon: 'https://www.ietf.org/static/img/ietf-logo.dc9646b3c716.svg'
+    description: 'Bibliographic data information for Internet-Drafts in Relaton format'
+  - repo: oasis
+    display: OASIS
+    source: index-v1.yaml
+    branch: v2
+    pubid_class:
+    favicon: 'https://www.oasis-open.org/wp-content/uploads/2020/11/cropped-2-layers@3x-32x32.png'
+    description: >-
+      Welcome to the OASIS standards index site! This is where you can find the
+      information you need about the various standards developed and maintained by
+      the OASIS open community. Explore the OASIS standards and learn how they can
+      help you solve your business and technical challenges!
+  - repo: w3c
+    display: W3C
+    source: index-v1.yaml
+    branch: v2
+    pubid_class: Relaton::W3c::PubId
+    pubid_require: relaton/w3c/pubid
+    favicon: 'https://www.w3.org/assets/logos/w3c/w3c-no-bars.svg'
+    description: >-
+      Welcome to the World Wide Web Consortium standards index site! This is where
+      you can find the information you need about the various standards developed and
+      maintained by the W3C open community.

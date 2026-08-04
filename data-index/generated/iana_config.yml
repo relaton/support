@@ -1,0 +1,9 @@
+title: IANA Index
+description: >-
+  Welcome to the IANA standards index site!
+paginate: 100
+jekyll-index:
+  favicon: 'https://www.relaton.org/favicon.ico'
+  source: 'index-v1.yaml'
+  baseurl: 'https://raw.githubusercontent.com/relaton/relaton-data-iana/v2/'
+  add_type_to_reference: true

@@ -1,0 +1,11 @@
+title: CIE Index
+description: >-
+  Welcome to the CIE standards index site!
+paginate: 100
+jekyll-index:
+  favicon: 'https://www.relaton.org/favicon.ico'
+  source: 'index-v2.yaml'
+  baseurl: 'https://raw.githubusercontent.com/relaton/relaton-data-cie/v2/'
+  add_type_to_reference: true
+  pubid_class: 'Pubid::Cie::Identifier'
+  pubid_require: 'pubid'

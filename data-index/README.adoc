@@ -16,6 +16,12 @@ merges the theme's base `_config.yml` with the repo's own (repo values win), run
   real default branch — drives `baseurl`), and `pubid_class` (blank for flat
   indexes). Edit this to change any repo's config.
 `../bin/gen-data-index-config`:: Renders a repo's `_config.yml` from `configs.yml`.
+`generated/`:: The committed snapshot of all 28 rendered `_config.yml` files (one
+  per target repo) — the exact bytes to commit into each data repo. Regenerate with
+  `../bin/gen-data-index-config --out data-index/generated`; kept honest by
+  `spec/generated_configs_spec.rb`.
+`../bin/check-data-pages`:: Confirms each repo's Pages site and raw index URL return
+  200 (the "confirm each site returns 200" gate). Run it after the rollout lands.
 
 == Why `_config.yml` lives in each data repo (not Cimas)
 
@@ -64,30 +70,86 @@ bundle, the tier-C flavors below render citable DocIDs rather than a fallback li
 | adobe, ccsds, cie, easc, etsi, gost, iec, ieee, iho, iso, itu-r, jcgm, jis, nist, oiml, plateau
 |===
 
+== Status (verified 2026-08-03)
+
+`configs.yml` covers *28 repos*: the 25 rollout targets plus the 3 already-live
+(*ids, oasis, w3c*), folded in so the generator is the single source for every site.
+The 3 live ones carry per-repo `favicon`/`description` overrides (and w3c a
+`pubid_require: relaton/w3c/pubid`); regenerating their `_config.yml` reproduces the
+live site (with `baseurl` corrected from `/main/` to their real default `/v2/`).
+
+Live (200): *relaton-data-ids, -oasis, -w3c* — already rolled out.
+
+Pending (Pages 404): *the other 25 repos in `configs.yml`*. Every one's published index
+(`<baseurl><source>`) already returns 200 — i.e. the data side is ready.
+
+Pages *enablement* state (verified via `gh api repos/relaton/relaton-data-<repo>/pages`):
+
+* *Already enabled* (`build_type: workflow`, source = default branch, no build
+  published yet so the site 404s) — the *20 `v2`-default repos*. These need only
+  steps 2–3 below; *skip step 1*.
+* *Not enabled* (Pages API 404) — the *5 `main`-default repos*: *adobe, easc, gost,
+  jcgm, oiml*. These need step 1, which requires *repo admin* (a plain `push`/`repo`
+  token gets HTTP 404 from the Create-Pages endpoint).
+
+Re-check current state any time with:
+
+[source,sh]
+----
+bin/check-data-pages              # site + raw-index for all 28
+bin/check-data-pages --site-only  # just the Pages sites (the 404s to fix)
+----
+
 == Rollout
 
-. Enable GitHub Pages (source: *GitHub Actions*) on the target repo.
-. Generate and commit the config onto the repo's default branch:
-+
-[source,sh]
-----
-# print one repo's config
-bin/gen-data-index-config iso
+Do these per target repo (or batch the Cimas step across all of them). Steps 1–3
+all happen *in the data repo* / on GitHub — this `support` repo only holds the
+source of truth and tooling.
 
-# or write files for several repos into a dir
-bin/gen-data-index-config --out /tmp/cfg 3gpp ogc xsf
-# then copy /tmp/cfg/<repo>_config.yml -> <data repo>/_config.yml and commit
-----
-. Roll the Cimas plumbing (`deploy.yml`, `Gemfile.deploy`) to every data repo:
+. *Enable GitHub Pages* (source: *GitHub Actions*) — *only for the 5 not-yet-enabled
+  `main`-default repos* (adobe, easc, gost, jcgm, oiml); the 20 `v2` repos already
+  have it (see Status). *Requires repo admin* — a `push`-only token gets HTTP 404:
 +
 [source,sh]
 ----
-# from the support repo root, per cimas-config usage in ../README.adoc
+gh api -X POST repos/relaton/relaton-data-<repo>/pages \
+  -f 'build_type=workflow'      # 409 if already enabled (safe to ignore)
+----
+. *Commit the `_config.yml`* onto the repo's default branch (from `configs.yml`'s
+  `branch:` — `v2` for most, `main` for adobe/easc/gost/jcgm/oiml). Use the
+  committed snapshot:
++
+[source,sh]
+----
+# snapshot already rendered in data-index/generated/
+cp data-index/generated/<repo>_config.yml <data repo>/_config.yml
+# (or regenerate on the fly: bin/gen-data-index-config <repo>)
+----
+. *Roll the Cimas plumbing* (`deploy.yml`, `Gemfile.deploy`) to every data repo —
+  from the support repo root, per `../README.adoc`:
++
+[source,sh]
+----
 cimas sync -f $CIMAS_CONFIG -r $CIMAS_WD -d $CIMAS_MASTER_DIR -g data
 cimas push -f $CIMAS_CONFIG -r $CIMAS_WD -b data-pages -m 'Pages deploy' -g data
+cimas open-prs -f $CIMAS_CONFIG -r $CIMAS_WD -b data-pages -m 'Pages deploy' -g data
 ----
-. Confirm the `Deploy` workflow goes green and the site lists DocID -> file with
-  working pagination.
+. *Confirm* the `Deploy` workflow goes green and each site returns 200:
++
+[source,sh]
+----
+bin/check-data-pages              # exits non-zero until every repo is 200
+----
++
+The site should list DocID -> file with working pagination and a citable DocID
+per row.
 
-TIP: Start with Tier A (renders cleanly today); hold Tier B/C until the theme
-hand-off lands.
+TIP: Start with Tier A (renders cleanly today); Tier B/C need the flavor pubid gem
+in the build bundle, which `cimas-config/gh-actions/data/Gemfile.deploy` already
+provides (it `eval_gemfile`s each repo's own Gemfile). See "Rendering readiness".
+
+NOTE: `configs.yml` and `../cimas-config/cimas.yml` must agree on every repo's
+`branch:` and both must map `deploy.yml` + `Gemfile.deploy`; a drift silently
+skips the publish (the deploy job only runs on the repo's default branch).
+`spec/cimas_data_pages_spec.rb` enforces this — run `bundle exec rspec` after
+editing either file.

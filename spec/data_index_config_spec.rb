@@ -48,10 +48,38 @@ RSpec.describe DataIndexConfig do
         .to eq("https://raw.githubusercontent.com/relaton/relaton-data-adobe/main/")
     end
 
-    it "applies one uniform favicon to every repo" do
-      favicons = config.repos.map { |e| jekyll_index(e["repo"])["favicon"] }.uniq
-      expect(favicons.size).to eq(1)
-      expect(favicons.first).to match(%r{\Ahttps://.+favicon})
+    it "applies the default favicon to repos without an override" do
+      default_favicon = config.defaults.fetch("favicon")
+      overridden = %w[ids oasis w3c]
+      config.repos.reject { |e| overridden.include?(e["repo"]) }.each do |e|
+        expect(jekyll_index(e["repo"])["favicon"]).to eq(default_favicon)
+      end
+    end
+
+    it "honors a per-repo favicon override (w3c)" do
+      expect(jekyll_index("w3c")["favicon"])
+        .to eq("https://www.w3.org/assets/logos/w3c/w3c-no-bars.svg")
+    end
+
+    it "honors a per-repo description override (ids)" do
+      parsed = YAML.safe_load(config.render_repo("ids"))
+      expect(parsed["description"])
+        .to eq("Bibliographic data information for Internet-Drafts in Relaton format")
+    end
+
+    it "templates the description for repos without an override (iso)" do
+      parsed = YAML.safe_load(config.render_repo("iso"))
+      expect(parsed["description"]).to eq("Welcome to the ISO standards index site!")
+    end
+
+    it "honors a per-repo pubid_require override (w3c -> relaton/w3c/pubid)" do
+      ji = jekyll_index("w3c")
+      expect(ji["pubid_class"]).to eq("Relaton::W3c::PubId")
+      expect(ji["pubid_require"]).to eq("relaton/w3c/pubid")
+    end
+
+    it "defaults pubid_require to 'pubid' when not overridden (iso)" do
+      expect(jekyll_index("iso")["pubid_require"]).to eq("pubid")
     end
 
     it "never emits a pubid_class with a leading '::' (const_get rejects it)" do
@@ -83,12 +111,13 @@ RSpec.describe DataIndexConfig do
   end
 
   describe "configs.yml data" do
-    it "covers exactly the 25 target repos with no duplicates" do
+    it "covers exactly the 28 repos with no duplicates" do
       repos = config.repos.map { |e| e["repo"] }
-      expect(repos.size).to eq(25)
-      expect(repos.uniq.size).to eq(25)
+      expect(repos.size).to eq(28)
+      expect(repos.uniq.size).to eq(28)
       expect(repos).to include("iso", "ieee", "jis", "adobe", "easc", "gost", "jcgm", "oiml")
-      expect(repos).not_to include("sdo", "ietf", "misc", "ids", "oasis", "w3c")
+      expect(repos).to include("ids", "oasis", "w3c") # already-live, folded in
+      expect(repos).not_to include("sdo", "ietf", "misc")
     end
 
     it "gives every entry the required fields" do
