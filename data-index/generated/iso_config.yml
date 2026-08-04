@@ -1,0 +1,11 @@
+title: ISO Index
+description: >-
+  Welcome to the ISO standards index site!
+paginate: 100
+jekyll-index:
+  favicon: 'https://www.relaton.org/favicon.ico'
+  source: 'index-v2.yaml'
+  baseurl: 'https://raw.githubusercontent.com/relaton/relaton-data-iso/v2/'
+  add_type_to_reference: true
+  pubid_class: 'Pubid::Iso::Identifier'
+  pubid_require: 'pubid'

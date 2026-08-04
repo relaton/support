@@ -1,0 +1,11 @@
+title: JIS Index
+description: >-
+  Welcome to the JIS standards index site!
+paginate: 100
+jekyll-index:
+  favicon: 'https://www.relaton.org/favicon.ico'
+  source: 'index-v2.yaml'
+  baseurl: 'https://raw.githubusercontent.com/relaton/relaton-data-jis/v2/'
+  add_type_to_reference: true
+  pubid_class: 'Pubid::Jis::Identifier'
+  pubid_require: 'pubid'

@@ -1,0 +1,10 @@
+= Generated relaton-data-* `_config.yml` snapshot
+
+*Do not edit by hand.* These files are generated from `../configs.yml` by
+`../../bin/gen-data-index-config --out data-index/generated` and are kept in sync
+by `spec/generated_configs_spec.rb`.
+
+Each `<repo>_config.yml` is the exact `_config.yml` to commit into
+`relaton/relaton-data-<repo>` (on that repo's default branch) as part of the Pages
+rollout — see `../README.adoc`. To change a repo's config, edit `../configs.yml`
+and regenerate; never edit these files directly.

@@ -1,0 +1,11 @@
+title: GOST Index
+description: >-
+  Welcome to the GOST standards index site!
+paginate: 100
+jekyll-index:
+  favicon: 'https://www.relaton.org/favicon.ico'
+  source: 'index-v2.yaml'
+  baseurl: 'https://raw.githubusercontent.com/relaton/relaton-data-gost/main/'
+  add_type_to_reference: true
+  pubid_class: 'Pubid::Gost::Identifier'
+  pubid_require: 'pubid'

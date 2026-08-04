@@ -1,0 +1,11 @@
+title: IHO Index
+description: >-
+  Welcome to the IHO standards index site!
+paginate: 100
+jekyll-index:
+  favicon: 'https://www.relaton.org/favicon.ico'
+  source: 'index-v3.yaml'
+  baseurl: 'https://raw.githubusercontent.com/relaton/relaton-data-iho/v2/'
+  add_type_to_reference: true
+  pubid_class: 'Pubid::Iho::Identifier'
+  pubid_require: 'pubid'
