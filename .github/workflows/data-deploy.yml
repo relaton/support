@@ -1,65 +1,87 @@
 name: Deploy
 
+# Build the relaton-data-<flavor> index site and publish it to GitHub Pages.
+#
+# This replaces the previous Jekyll build (checkout the
+# relaton/jekyll-theme-relaton-data-index theme, merge _config.yml, `jekyll
+# build`) with a single `relaton index` invocation: relaton-cli reads the repo's
+# ./data folder and emits a self-contained, crawler-indexable index that inlines
+# a compiled Vue+Tailwind bundle. See relaton/relaton#83.
+#
+# Callers need no changes — it stays `workflow_call` with no required inputs:
+#
+#   jobs:
+#     deploy:
+#       uses: relaton/support/.github/workflows/data-deploy.yml@main
+#
+# Optional inputs let a repo override the title / data dir / delivery mode.
+
 on:
   workflow_call:
+    inputs:
+      title:
+        description: "Index page title (default: '<FLAVOR> Index' from the repo name)"
+        required: false
+        type: string
+      data-dir:
+        description: "Folder of Relaton YAML documents"
+        required: false
+        default: "data"
+        type: string
+      mode:
+        description: "Data delivery mode: embedded | dom | static-json"
+        required: false
+        default: "embedded"
+        type: string
+      relaton-cli-version:
+        description: "relaton-cli version to install (default: latest released)"
+        required: false
+        default: ""
+        type: string
+
+permissions:
+  contents: read
 
 jobs:
   build_index_page:
     runs-on: ubuntu-latest
-    # Resolve gems against the data repo's Gemfile.deploy (Cimas-synced), which
-    # layers Jekyll on top of the repo's own relaton + pubid pins. Both the
-    # setup-ruby bundler-cache install and `bundle exec jekyll build` honor
-    # BUNDLE_GEMFILE, so the whole job gets Jekyll AND pubid in one bundle. The
-    # data repo is checkout #1 at the workspace root, so the file lives there.
-    env:
-      BUNDLE_GEMFILE: ${{ github.workspace }}/Gemfile.deploy
     steps:
       - uses: actions/checkout@v4
 
       - uses: ruby/setup-ruby@v1
         with:
           ruby-version: "3.4"
-          bundler-cache: true
-          cache-version: 0
 
-      - uses: actions/checkout@v4
-        with:
-          repository: relaton/jekyll-theme-relaton-data-index
-          path: src
-
-      - name: Merge _config.yml
-        shell: python
+      # The released relaton-cli gem ships the compiled frontend bundle, so the
+      # job needs only Ruby (no Node build here).
+      - name: Install relaton-cli
         run: |
-          import os
-          import yaml
+          if [ -n "${{ inputs.relaton-cli-version }}" ]; then
+            gem install relaton-cli -v "${{ inputs.relaton-cli-version }}"
+          else
+            gem install relaton-cli
+          fi
 
-          base_config_path = 'src/_config.yml'
-          repo_config_path = '_config.yml'
+      - name: Derive title
+        id: meta
+        run: |
+          title="${{ inputs.title }}"
+          if [ -z "$title" ]; then
+            flavor="${GITHUB_REPOSITORY##*/}"      # relaton-data-bipm
+            flavor="${flavor#relaton-data-}"        # bipm
+            title="$(echo "$flavor" | tr '[:lower:]' '[:upper:]') Index"
+          fi
+          echo "title=$title" >> "$GITHUB_OUTPUT"
 
-          with open(base_config_path) as base_config_file, open(repo_config_path) as config_file:
-            base_config = yaml.safe_load(base_config_file)
-            config = yaml.safe_load(config_file)
+      - name: Build index site
+        run: |
+          relaton index "${{ inputs.data-dir }}" \
+            --output _site \
+            --mode "${{ inputs.mode }}" \
+            --title "${{ steps.meta.outputs.title }}" \
+            --base-url "https://raw.githubusercontent.com/${GITHUB_REPOSITORY}/${GITHUB_REF_NAME}"
 
-          result_config = {**base_config, **config}
-
-          with open(repo_config_path, 'w') as file:
-            yaml.dump(result_config, file)
-
-          os.remove(base_config_path)
-
-      - run: |
-          cat _config.yml
-          echo "---"
-          tree src
-
-      - id: pages
-        uses: actions/configure-pages@v4
-
-      - name: Build with Jekyll
-        # Outputs to the './_site' directory by default
-        run: bundle exec jekyll build --baseurl "${{ steps.pages.outputs.base_path }}"
-        env:
-          JEKYLL_ENV: production
+      - uses: actions/configure-pages@v4
 
       - uses: actions/upload-pages-artifact@v3
 
