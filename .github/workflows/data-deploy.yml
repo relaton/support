@@ -1,65 +1,152 @@
 name: Deploy
 
+# Build the relaton-data-<flavor> index site and publish it to GitHub Pages.
+#
+# Replaces the previous Jekyll build (checkout jekyll-theme-relaton-data-index,
+# merge _config.yml, `jekyll build`) with a single `relaton index` run:
+# relaton-cli reads the repo's ./data folder and emits a self-contained,
+# crawler-indexable index that inlines a compiled Vue+Tailwind bundle.
+# See relaton/relaton#83.
+#
+# Callers need no changes — it stays `workflow_call` with no required inputs:
+#
+#   jobs:
+#     deploy:
+#       uses: relaton/support/.github/workflows/data-deploy.yml@main
+#
+# Two source modes (input `source`):
+#   * gem (default) — install the released relaton-cli gem. Ruby only; the gem
+#     ships the precompiled frontend bundle.
+#   * git           — build relaton + relaton-cli straight from GitHub (with
+#     pubid from git main, which relaton tracks). Compiles the frontend on the
+#     fly, so this mode also needs Node. Use it to pilot before a gem release.
+
 on:
   workflow_call:
+    inputs:
+      source:
+        description: "Where to get relaton-cli: 'gem' (released) or 'git' (build from GitHub)"
+        required: false
+        default: "gem"
+        type: string
+      title:
+        description: "Index page title (default: '<FLAVOR> Index' from the repo name)"
+        required: false
+        type: string
+      data-dir:
+        description: "Folder of Relaton YAML documents"
+        required: false
+        default: "data"
+        type: string
+      mode:
+        description: "Data delivery mode: embedded | dom | static-json"
+        required: false
+        default: "embedded"
+        type: string
+      relaton-cli-version:
+        description: "gem source: relaton-cli version to install (default: latest; e.g. add to pin a prerelease)"
+        required: false
+        default: ""
+        type: string
+      relaton-repo:
+        description: "git source: repo to build relaton/relaton-cli from"
+        required: false
+        default: "relaton/relaton"
+        type: string
+      relaton-ref:
+        description: "git source: ref (branch/tag/sha) to build"
+        required: false
+        default: "main"
+        type: string
+
+permissions:
+  contents: read
 
 jobs:
   build_index_page:
     runs-on: ubuntu-latest
-    # Resolve gems against the data repo's Gemfile.deploy (Cimas-synced), which
-    # layers Jekyll on top of the repo's own relaton + pubid pins. Both the
-    # setup-ruby bundler-cache install and `bundle exec jekyll build` honor
-    # BUNDLE_GEMFILE, so the whole job gets Jekyll AND pubid in one bundle. The
-    # data repo is checkout #1 at the workspace root, so the file lives there.
-    env:
-      BUNDLE_GEMFILE: ${{ github.workspace }}/Gemfile.deploy
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4 # the data repo (has ./data)
 
       - uses: ruby/setup-ruby@v1
         with:
           ruby-version: "3.4"
-          bundler-cache: true
-          cache-version: 0
 
-      - uses: actions/checkout@v4
-        with:
-          repository: relaton/jekyll-theme-relaton-data-index
-          path: src
-
-      - name: Merge _config.yml
-        shell: python
+      # ---- gem source (default): install the released gem, Ruby only ----------
+      - name: Install relaton-cli (released gem)
+        if: inputs.source == 'gem'
         run: |
-          import os
-          import yaml
+          if [ -n "${{ inputs.relaton-cli-version }}" ]; then
+            gem install relaton-cli -v "${{ inputs.relaton-cli-version }}"
+          else
+            gem install relaton-cli
+          fi
 
-          base_config_path = 'src/_config.yml'
-          repo_config_path = '_config.yml'
+      # ---- git source: build relaton + relaton-cli from GitHub -----------------
+      # relaton-cli's frontend/dist is gitignored, so it must be compiled here
+      # (needs Node). pubid is taken from git main, which relaton's code tracks.
+      - name: Checkout relaton (git source)
+        if: inputs.source == 'git'
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ inputs.relaton-repo }}
+          ref: ${{ inputs.relaton-ref }}
+          path: .relaton-src
 
-          with open(base_config_path) as base_config_file, open(repo_config_path) as config_file:
-            base_config = yaml.safe_load(base_config_file)
-            config = yaml.safe_load(config_file)
+      - name: Setup Node (git source)
+        if: inputs.source == 'git'
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
 
-          result_config = {**base_config, **config}
+      - name: Build frontend + bundle from GitHub (git source)
+        if: inputs.source == 'git'
+        run: |
+          set -euo pipefail
+          # Compile the Vue+Tailwind bundle into frontend/dist (gitignored).
+          ( cd .relaton-src/gems/relaton-cli/frontend && npm ci && npm run build )
+          # Resolve relaton + relaton-cli from the checkout and pubid from git
+          # main (same as the relaton repo's own root Gemfile).
+          cat > "$RUNNER_TEMP/Gemfile.index" <<RUBY
+          source "https://rubygems.org"
+          gem "relaton", path: "${{ github.workspace }}/.relaton-src"
+          gem "relaton-cli", path: "${{ github.workspace }}/.relaton-src/gems/relaton-cli"
+          gem "pubid", git: "https://github.com/metanorma/pubid.git", branch: "main"
+          RUBY
+          echo "BUNDLE_GEMFILE=$RUNNER_TEMP/Gemfile.index" >> "$GITHUB_ENV"
+          BUNDLE_GEMFILE="$RUNNER_TEMP/Gemfile.index" bundle install
 
-          with open(repo_config_path, 'w') as file:
-            yaml.dump(result_config, file)
+      - name: Derive title
+        id: meta
+        run: |
+          title="${{ inputs.title }}"
+          if [ -z "$title" ]; then
+            flavor="${GITHUB_REPOSITORY##*/}"      # relaton-data-bipm
+            flavor="${flavor#relaton-data-}"        # bipm
+            title="$(echo "$flavor" | tr '[:lower:]' '[:upper:]') Index"
+          fi
+          echo "title=$title" >> "$GITHUB_OUTPUT"
 
-          os.remove(base_config_path)
+      - name: Build index (gem source)
+        if: inputs.source == 'gem'
+        run: |
+          relaton index "${{ inputs.data-dir }}" \
+            --output _site \
+            --mode "${{ inputs.mode }}" \
+            --title "${{ steps.meta.outputs.title }}" \
+            --base-url "https://raw.githubusercontent.com/${GITHUB_REPOSITORY}/${GITHUB_REF_NAME}"
 
-      - run: |
-          cat _config.yml
-          echo "---"
-          tree src
+      - name: Build index (git source)
+        if: inputs.source == 'git'
+        # BUNDLE_GEMFILE is exported to GITHUB_ENV in the build step above.
+        run: |
+          bundle exec relaton index "${{ github.workspace }}/${{ inputs.data-dir }}" \
+            --output "${{ github.workspace }}/_site" \
+            --mode "${{ inputs.mode }}" \
+            --title "${{ steps.meta.outputs.title }}" \
+            --base-url "https://raw.githubusercontent.com/${GITHUB_REPOSITORY}/${GITHUB_REF_NAME}"
 
-      - id: pages
-        uses: actions/configure-pages@v4
-
-      - name: Build with Jekyll
-        # Outputs to the './_site' directory by default
-        run: bundle exec jekyll build --baseurl "${{ steps.pages.outputs.base_path }}"
-        env:
-          JEKYLL_ENV: production
+      - uses: actions/configure-pages@v4
 
       - uses: actions/upload-pages-artifact@v3
 
