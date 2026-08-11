@@ -15,11 +15,24 @@
 #                 Relaton::Index.find_or_create in relaton's lib/relaton/<flavor>/data_fetcher.rb.
 #                 No leading "::" — the theme plugin resolves it with Object.const_get.
 #
-# Optional per-entry overrides (fall back to the defaults/template when absent) —
-# used by the already-live ids/oasis/w3c to keep their own branding:
+# Optional per-entry overrides (fall back to the defaults/template when absent):
 #   favicon        - override defaults.favicon
 #   description     - override the templated "Welcome to the <display> ..." line
 #   pubid_require   - override defaults.pubid_require (w3c uses relaton/w3c/pubid)
+#
+# Favicon convention: prefer the SDO's own icon where there is a stable URL for
+# one; leave `favicon` unset to inherit defaults.favicon (relaton.org). Adding
+# one is a one-line edit here — no data-repo or workflow change.
+#
+# `display`, `favicon` and `description` are ALSO what the shared
+# .github/workflows/data-deploy.yml passes to `relaton index` — as
+# `--title "<display> Index"`, `--favicon` and `--description`, via
+# DataIndexConfig#branding and bin/index-branding. So this file, not each repo's
+# deploy.yml `with:` block, is where a data repo's Pages branding lives. (There
+# is no per-entry `title` key: the title always derives from `display`.)
+# It has to be: cimas.yml maps `.github/workflows/deploy.yml` as a whole-file
+# copy for 29 repos, so a `with:` block is wiped on the next `cimas sync` and the
+# page silently loses its favicon and description.
 
 defaults:
   paginate: 100
@@ -39,7 +52,20 @@ repos:
   - { repo: ecma,         display: ECMA,          source: index-v1.yaml, branch: v2,   pubid_class: }
   - { repo: etsi,         display: ETSI,          source: index-v2.yaml, branch: v2,   pubid_class: Pubid::Etsi::Identifier }
   - { repo: gost,         display: GOST,          source: index-v2.yaml, branch: main, pubid_class: Pubid::Gost::Identifier }
-  - { repo: iana,         display: IANA,          source: index-v1.yaml, branch: v2,   pubid_class: }
+  # Taken from the `with:` block of the relaton-data-iana caller prepared
+  # alongside this change (not yet pushed, so these values are not live
+  # anywhere). Recorded here rather than there because that block is exactly what
+  # a `cimas sync` would drop without trace. First flavor to follow the
+  # SDO's-own-icon convention beyond the three already-live repos.
+  - repo: iana
+    display: IANA
+    source: index-v1.yaml
+    branch: v2
+    pubid_class:
+    favicon: 'https://www.iana.org/favicon.ico'
+    description: >-
+      Protocol parameter registries represent the authoritative record of many of
+      the codes and numbers contained in a variety of Internet protocols.
   - { repo: iec,          display: IEC,           source: index-v2.yaml, branch: v2,   pubid_class: Pubid::Iec::Identifier }
   - { repo: ieee,         display: IEEE,          source: index-v2.yaml, branch: v2,   pubid_class: Pubid::Ieee::Identifier }
   - { repo: iho,          display: IHO,           source: index-v3.yaml, branch: v2,   pubid_class: Pubid::Iho::Identifier }

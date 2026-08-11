@@ -83,5 +83,16 @@ RSpec.describe "cimas-config/gh-actions/data/deploy.yml" do
       # Also central, so a repo whose deploy.yml drifts still gets it.
       expect(deploy_job).not_to have_key("if")
     end
+
+    it "passes no inputs at all" do
+      # THE reason branding moved into data-index/configs.yml. cimas.yml maps
+      # this file into 29 repos as a whole-file copy, so anything in a `with:`
+      # here is either wrong for the other 28 or — once a repo hand-edits it —
+      # silently reverted by the next `cimas sync`. Branding failed silently (the
+      # page just loses its favicon); `source: git` fails loudly with
+      # `Could not find command "index"`, which is why only branding moved and
+      # `source` is still a caller input.
+      expect(deploy_job).not_to have_key("with")
+    end
   end
 end

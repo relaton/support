@@ -1,0 +1,34 @@
+name: ci-spec
+
+# Run this repo's own spec suite.
+#
+# It existed before this workflow did but nothing invoked it: every other file in
+# .github/workflows/ here is a `workflow_call` template synced into OTHER repos,
+# and ci-lint.yml only lints. So the specs that pin the Cimas templates and the
+# data-index config ran solely when someone remembered to `bundle exec rake`.
+#
+# That became load-bearing when data-deploy.yml started reading
+# data-index/configs.yml at build time: this repo's lib/, bin/ and configs.yml are
+# now a runtime dependency of every relaton-data-* Pages build, and a broken one
+# fails all of them at once. These specs are the only thing standing in front of
+# that, so they have to run on the PR that breaks them.
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+
+jobs:
+  spec:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: ruby/setup-ruby@v1
+        with:
+          # Matches the version data-deploy.yml resolves branding under, so a
+          # syntax or stdlib difference cannot pass here and fail in a data repo.
+          ruby-version: "3.4"
+          bundler-cache: true
+
+      - run: bundle exec rake

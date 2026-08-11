@@ -49,4 +49,18 @@ jobs:
     # both centrally — it skips a `workflow_run` whose crawler failed, and
     # serializes Pages deployments per repo — so every caller gets them without
     # a copy of its own to drift.
+    #
+    # And no `with:` block, ever. Cimas copies this file byte-for-byte into 29
+    # relaton-data-* repos, so an input set here is either wrong for the other 28
+    # or, once a repo hand-edits it, silently reverted by the next `cimas sync` —
+    # the page just loses its favicon and description, with nothing red in CI.
+    # Per-repo branding (title/favicon/description) lives in relaton/support's
+    # `data-index/configs.yml`, which data-deploy.yml reads at build time.
+    # Pinned by spec/data_deploy_caller_template_spec.rb and, for every synced
+    # template, by spec/cimas_data_pages_spec.rb.
+    #
+    # The known exception is the temporary `source: git` pin several repos carry
+    # while relaton-cli ships no `index` command. That one is deliberately NOT
+    # centralised: losing it fails loudly with `Could not find command "index"`,
+    # so a sync that wipes it cannot go unnoticed.
     uses: relaton/support/.github/workflows/data-deploy.yml@main

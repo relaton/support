@@ -1,13 +1,21 @@
 = relaton-data-* GitHub Pages index configs
 
-Source of truth for the per-repo Jekyll Pages `_config.yml` that gives each
-`relaton-data-*` repo an index site (relaton/relaton#48).
+Source of truth for the per-repo settings behind each `relaton-data-*` repo's
+GitHub Pages index site (relaton/relaton#48).
 
 The site is built by the shared reusable workflow
-`relaton/support/.github/workflows/data-deploy.yml`, which checks out the theme
-https://github.com/relaton/jekyll-theme-relaton-data-index[jekyll-theme-relaton-data-index],
-merges the theme's base `_config.yml` with the repo's own (repo values win), runs
-`jekyll build`, and deploys to Pages.
+`relaton/support/.github/workflows/data-deploy.yml`, which runs `relaton index`
+over the repo's `data/` folder and deploys the result to Pages. It reads this
+directory's `configs.yml` for the page's `title`, `favicon` and `description`.
+
+[IMPORTANT]
+====
+`relaton index` replaced a Jekyll build in support#58 (relaton/relaton#83). The
+`_config.yml` material below — `../bin/gen-data-index-config`, `generated/`, the
+theme merge, the pubid rule — describes that superseded path and is kept because
+`configs.yml` still carries the fields it used. Only `display`, `favicon` and
+`description` reach the live build today; retiring the rest is follow-up work.
+====
 
 == Files
 
@@ -15,7 +23,16 @@ merges the theme's base `_config.yml` with the repo's own (repo values win), run
   (published INDEXFILE the current relaton consumer reads), `branch` (the repo's
   real default branch — drives `baseurl`), and `pubid_class` (blank for flat
   indexes). Edit this to change any repo's config.
++
+It has two consumers. `display`, `favicon` and `description` are also the
+branding the live `relaton index` build renders (see the note below), so an edit
+to those fields changes a repo's published page on its next deploy — no data-repo
+change involved.
 `../bin/gen-data-index-config`:: Renders a repo's `_config.yml` from `configs.yml`.
+`../bin/index-branding`:: Resolves one repo's `title`/`favicon`/`description` from
+  `configs.yml` and prints them in `$GITHUB_OUTPUT` form. Run by the "Resolve
+  branding" step of `data-deploy.yml`; useful by hand to preview what a repo will
+  publish (`bin/index-branding relaton/relaton-data-iana`).
 `generated/`:: The committed snapshot of all 28 rendered `_config.yml` files (one
   per target repo) — the exact bytes to commit into each data repo. Regenerate with
   `../bin/gen-data-index-config --out data-index/generated`; kept honest by
@@ -57,20 +74,41 @@ share a queue — GitHub keeps just one *pending* run per group and cancels it w
 the next arrives, so a tag push or PR build sharing the queue could otherwise
 drop a run carrying fresh data.
 
-[CAUTION]
+[NOTE]
 ====
-Cimas replaces `deploy.yml` wholesale in all 29 mapped repos. Four of them carry
-a hand-added `with:` block that nothing here regenerates — `configs.yml` renders
-`_config.yml` only:
+Cimas replaces `deploy.yml` wholesale in all 29 mapped repos, so nothing per-repo
+can live in a caller's `with:` block and survive.
 
-* `relaton-data-bipm`, `relaton-data-3gpp` — `source: git`
-* `relaton-data-w3c`, `relaton-data-iana` — `source: git` plus `favicon:` and
-  `description:`
+Branding no longer tries to. `title`, `favicon` and `description` come from
+`configs.yml` in this directory: the shared `data-deploy.yml` sparse-checks-out
+`relaton/support` at its own commit (`job.workflow_repository` +
+`job.workflow_sha` — the `job` context, not `github`, which in a called workflow
+describes the caller) and runs
+`bin/index-branding` to resolve them per flavor. The caller template therefore
+carries no `with:` block at all and is safe to sync — pinned by
+`spec/data_deploy_caller_template_spec.rb`, and generalised to every synced
+template by `spec/cimas_data_pages_spec.rb`.
 
-Syncing over them drops those inputs back to `source: gem`, which fails with
-`Could not find command "index"` until relaton-cli ships `index`, and loses the
-branding. Re-apply the `with:` blocks after a sync, or hold those four back and
-edit them by hand.
+What a sync *does* still clobber is the temporary `source: git` pin that callers
+carry while no released relaton-cli has the `index` command. That one is
+deliberately left in the caller: losing it fails loudly with
+`Could not find command "index"`, whereas lost branding failed silently.
+Re-apply those pins after a sync, or hold those repos back, until relaton-cli
+ships `index` and they can all be deleted.
+
+Some of those callers also still pass branding inputs that are now redundant,
+because `configs.yml` resolves the same values — verified equal repo by repo at
+the time of writing. Those lines can be dropped independently of the `source`
+pin. To re-check the current fleet rather than trusting a list that will drift:
+
+[source,sh]
+----
+for r in $(gh repo list relaton --limit 200 --json name -q '.[].name' | grep '^relaton-data-'); do
+  gh api "repos/relaton/$r/contents/.github/workflows/deploy.yml" \
+    -H 'Accept: application/vnd.github.raw' 2>/dev/null |
+    grep -q '^    with:' && echo "$r"
+done
+----
 ====
 
 == The pubid rule
