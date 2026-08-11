@@ -14,6 +14,12 @@ name: Deploy
 #     deploy:
 #       uses: relaton/support/.github/workflows/data-deploy.yml@main
 #
+# Callers should publish on the crawler finishing rather than on a cron guessed
+# to land after it — see `cimas-config/gh-actions/data/deploy.yml`, the template
+# Cimas syncs into every relaton-data-* repo. A caller needs only the trigger;
+# both the "skip a failed crawler run" guard and the Pages concurrency group are
+# declared here, so no per-repo copy can drift or forget them.
+#
 # Optionally, a caller passes the per-flavor branding its `_config.yml` used to
 # carry — `title`, `favicon` and `description` (see relaton/relaton#96). Left
 # unset, the page carries no favicon and no description, exactly as before.
@@ -79,8 +85,45 @@ on:
 permissions:
   contents: read
 
+# Serialize Pages deployments per calling repo. Runs overlap easily — the caller
+# template fires on `workflow_run` *and* a fallback cron, and a `source: git`
+# build takes ~10 minutes — and two concurrent actions/deploy-pages runs make the
+# loser fail with a concurrent-deployment error. Mirrors GitHub's own Pages
+# starter workflow.
+#
+# Declared at the top level of this *called* workflow, which is where GitHub
+# documents concurrency for a reusable workflow to live: `jobs.<id>.concurrency`
+# on the calling job does not behave as expected. One group per caller repo
+# (`github.repository` evaluates in the caller's context), so no data repo ever
+# queues behind a sibling. `cancel-in-progress: false` is deliberate — queue
+# deployments rather than kill a Pages deploy mid-flight.
+#
+# Only runs that can actually publish share the queue. Under GitHub's default
+# `queue: single` a *pending* run is cancelled the moment a third joins its
+# group, so anything parked in the deployment queue that will never deploy can
+# drop a queued run carrying freshly crawled data — the staleness this
+# workflow's triggers exist to avoid. Pull requests, tag pushes and pushes to a
+# non-default branch all build for ~10 minutes and then skip `deploy`, so they
+# are keyed by ref into groups of their own.
+#
+# The discriminator is the deploy job's own gate, so the two cannot drift.
+concurrency:
+  group: >-
+    pages-${{ github.repository }}-${{
+    github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
+    && 'deploy' || github.ref }}
+  cancel-in-progress: false
+
 jobs:
   build_index_page:
+    # A `workflow_run` caller fires on `completed`, not `success` (there is no
+    # `success` activity type), so filter the conclusion here: rebuild for every
+    # other trigger, but skip a run whose crawler actually failed. This lives in
+    # the shared workflow rather than in each caller's `deploy:` job so no caller
+    # can forget it — a called workflow inherits the caller run's `github`
+    # context, event payload included. `deploy` is `needs: build_index_page`, so
+    # skipping the build skips the publish with it.
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4 # the data repo (has ./data)

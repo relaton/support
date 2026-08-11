@@ -13,6 +13,10 @@ RSpec.describe ".github/workflows/data-deploy.yml" do
   inputs = workflow.fetch(true).fetch("workflow_call").fetch("inputs")
   build_job = workflow.fetch("jobs").fetch("build_index_page")
   index_steps = build_job.fetch("steps").select { |s| s["run"]&.match?(/\brelaton index\b/) }
+  # "Publish only from the repo's real default branch" — the one condition that
+  # decides whether a run reaches actions/deploy-pages, reused by the
+  # concurrency group below so the two cannot drift apart.
+  deploy_gate = "github.ref == format('refs/heads/{0}', github.event.repository.default_branch)"
 
   it "keeps every input optional, so existing callers need no changes" do
     expect(inputs.values).to all(include("required" => false))
@@ -60,5 +64,61 @@ RSpec.describe ".github/workflows/data-deploy.yml" do
       # Both invocations must stay in sync — see the note at the top.
       expect(index_steps.map { |s| s.fetch("run") }).to all(include("#{flag} "))
     end
+  end
+
+  it "publishes only from the repository's real default branch" do
+    # Hardcoding master/main once excluded the relaton-data-* repos that moved
+    # their default branch to v2 — fresh data built, never published.
+    expect(workflow.fetch("jobs").fetch("deploy").fetch("if")).to eq(deploy_gate)
+  end
+
+  describe "the concurrency group" do
+    concurrency = workflow["concurrency"]
+
+    it "is declared, so two Pages deployments cannot collide" do
+      # Both runs reach actions/deploy-pages@v4 and the loser fails with a
+      # concurrent-deployment error. Overlap is easy: the caller template fires
+      # on `workflow_run` *and* a fallback cron, and a `source: git` build runs
+      # for ~10 minutes. Declared here rather than per caller because GitHub
+      # documents the *called* workflow's top level as where concurrency for a
+      # reusable workflow belongs — `jobs.<id>.concurrency` on the calling job
+      # "will not behave as expected".
+      expect(concurrency).to be_a(Hash)
+    end
+
+    it "scopes the group to the calling repository" do
+      # `github.repository` evaluates in the caller's context, so each
+      # relaton-data-* repo queues against itself and never against a sibling.
+      expect(concurrency.fetch("group")).to start_with("pages-${{ github.repository }}")
+    end
+
+    it "queues only the runs that can actually publish" do
+      # Under GitHub's default `queue: single` a pending run is cancelled the
+      # moment a third joins its group. Pull requests, tag pushes and pushes to
+      # a non-default branch all build and then skip `deploy`, so parking them
+      # in the deployment queue would let them drop a pending run carrying
+      # freshly crawled data. Keying on the deploy job's *own* gate is what
+      # keeps the split honest — assert they are literally the same expression,
+      # so narrowing one and forgetting the other fails here.
+      expect(concurrency.fetch("group")).to include(deploy_gate)
+    end
+
+    it "queues deployments instead of cancelling one mid-flight" do
+      # Deliberate, and the opposite of GitHub's default: a cancelled
+      # actions/deploy-pages run can leave the Pages deployment half-applied.
+      expect(concurrency.fetch("cancel-in-progress")).to be(false)
+    end
+  end
+
+  it "skips a build whose triggering workflow run failed" do
+    # A `workflow_run` caller fires on `completed`, not `success`. The guard
+    # lives here, not in each caller's `deploy:` job, so no caller can forget
+    # it — a called workflow inherits the caller run's `github` context,
+    # event payload included. `deploy` is `needs: build_index_page`, so
+    # skipping the build skips the publish too.
+    expect(build_job.fetch("if")).to eq(
+      "github.event_name != 'workflow_run' || " \
+      "github.event.workflow_run.conclusion == 'success'",
+    )
   end
 end
