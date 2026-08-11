@@ -31,6 +31,48 @@ the byte-identical plumbing (`deploy.yml`, `Gemfile.deploy`). This generator is 
 single place the per-repo configs are produced; the output is committed into each
 data repo, where a maintainer may further tune it without a central clobber.
 
+== When the site rebuilds
+
+The Cimas template `cimas-config/gh-actions/data/deploy.yml` publishes on
+`workflow_run`: the Deploy run starts because the repo's `Crawler` workflow
+completed, not on a cron guessed to land after it. That ordering used to be
+time-based (crawler at 14:00, deploy at 15:00) and did not hold — GitHub's
+scheduled dispatch drifts heavily under load, so the deploy usually indexed the
+previous day's data. The `push` trigger cannot cover the gap either: the crawler
+commits with the default `GITHUB_TOKEN`, and GitHub raises no workflow events
+for those pushes.
+
+The `0 18 * * *` cron is a fallback, placed clear of the crawler's observed run
+window rather than one hour after its nominal cron. Note what it does *not*
+cover: `types: [completed]` fires on every crawler run whether or not anything
+was committed, so the cron is not there for quiet days. It covers a crawler that
+never ran or was disabled, and upstream `relaton/relaton` changes that alter the
+generated index — at the price of a second full build per day.
+
+Two things a caller deliberately does *not* declare, because `data-deploy.yml`
+declares them centrally for the whole fleet: the `if:` that skips a `workflow_run`
+whose crawler failed, and the Pages `concurrency` group. That group is keyed on
+the deploy job's own default-branch gate, so only runs that can actually publish
+share a queue — GitHub keeps just one *pending* run per group and cancels it when
+the next arrives, so a tag push or PR build sharing the queue could otherwise
+drop a run carrying fresh data.
+
+[CAUTION]
+====
+Cimas replaces `deploy.yml` wholesale in all 29 mapped repos. Four of them carry
+a hand-added `with:` block that nothing here regenerates — `configs.yml` renders
+`_config.yml` only:
+
+* `relaton-data-bipm`, `relaton-data-3gpp` — `source: git`
+* `relaton-data-w3c`, `relaton-data-iana` — `source: git` plus `favicon:` and
+  `description:`
+
+Syncing over them drops those inputs back to `source: gem`, which fails with
+`Could not find command "index"` until relaton-cli ships `index`, and loses the
+branding. Re-apply the `with:` blocks after a sync, or hold those four back and
+edit them by hand.
+====
+
 == The pubid rule
 
 The theme plugin renders a structured index `:id` (a Hash) by instantiating a
