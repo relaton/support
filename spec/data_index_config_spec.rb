@@ -49,16 +49,32 @@ RSpec.describe DataIndexConfig do
     end
 
     it "applies the default favicon to repos without an override" do
+      # The convention is the SDO's own icon where there is a stable URL for one,
+      # relaton.org otherwise. Listed explicitly so adding an override is a
+      # deliberate edit here rather than a silent change to a repo's live page.
       default_favicon = config.defaults.fetch("favicon")
-      overridden = %w[ids oasis w3c]
+      overridden = %w[iana ids oasis w3c]
       config.repos.reject { |e| overridden.include?(e["repo"]) }.each do |e|
         expect(jekyll_index(e["repo"])["favicon"]).to eq(default_favicon)
+      end
+      overridden.each do |repo|
+        expect(jekyll_index(repo)["favicon"]).not_to eq(default_favicon)
       end
     end
 
     it "honors a per-repo favicon override (w3c)" do
       expect(jekyll_index("w3c")["favicon"])
         .to eq("https://www.w3.org/assets/logos/w3c/w3c-no-bars.svg")
+    end
+
+    it "carries iana's branding" do
+      # Taken from the relaton-data-iana caller prepared alongside this change
+      # and not yet pushed, so these values are not live anywhere — this is a new
+      # editorial choice, not a recovery. Recorded here rather than in that
+      # caller because a `cimas sync` would drop a `with:` block without trace.
+      expect(jekyll_index("iana")["favicon"]).to eq("https://www.iana.org/favicon.ico")
+      expect(YAML.safe_load(config.render_repo("iana"))["description"])
+        .to start_with("Protocol parameter registries represent the authoritative record")
     end
 
     it "honors a per-repo description override (ids)" do

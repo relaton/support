@@ -22,6 +22,14 @@ class DataIndexConfig
     new(data.fetch("defaults"), data.fetch("repos"))
   end
 
+  # The configs.yml key for a repo named any of the ways a caller might have it:
+  # "relaton/relaton-data-itu-r" ($GITHUB_REPOSITORY), "relaton-data-itu-r", or a
+  # bare "itu-r". The owner is dropped rather than checked so a fork's PR build
+  # resolves the same branding as the upstream repo.
+  def self.flavor(repo)
+    repo.to_s.split("/").last.to_s.sub(/\Arelaton-data-/, "")
+  end
+
   def initialize(defaults, repos)
     @defaults = defaults
     @repos = repos
@@ -29,13 +37,37 @@ class DataIndexConfig
 
   # Look up a single repo entry by its `repo` key.
   def entry(repo)
-    repos.find { |e| e["repo"] == repo } or
-      raise ArgumentError, "unknown repo: #{repo.inspect}"
+    find_entry(repo) or raise ArgumentError, "unknown repo: #{repo.inspect}"
   end
 
   # Render the `_config.yml` text for a repo name.
   def render_repo(repo)
     render(entry(repo))
+  end
+
+  # The branding `relaton index` renders into the Pages site — title, favicon and
+  # `<meta name="description">` — resolved centrally rather than passed by each
+  # caller. cimas.yml maps `.github/workflows/deploy.yml` as a whole-file copy for
+  # 29 repos, so a `with:` block carrying these values is wiped on the next
+  # `cimas sync` and the site silently loses them.
+  #
+  # Precedence: an explicit non-blank argument (a caller's workflow input) beats
+  # this repo's configs.yml entry, which beats the shared default.
+  #
+  # Deliberately never raises, unlike #entry: Cimas syncs deploy.yml into
+  # relaton-data-ietf, which publishes no document index and so has no configs.yml
+  # row. An unknown repo falls back to what the workflow's own shell derivation
+  # produced before this method existed — "<FLAVOR> Index" and no branding.
+  #
+  # => { "title" => String, "favicon" => String, "description" => String }
+  def branding(repo, title: nil, favicon: nil, description: nil)
+    found = find_entry(self.class.flavor(repo))
+
+    {
+      "title" => present(title) || (found ? entry_title(found) : derived_title(repo)),
+      "favicon" => present(favicon) || (found ? entry_favicon(found) : ""),
+      "description" => present(description) || (found ? entry_description(found) : ""),
+    }
   end
 
   # Render the `_config.yml` text for a raw entry hash (merged with defaults).
@@ -45,15 +77,18 @@ class DataIndexConfig
   # branding + w3c's non-default `relaton/w3c/pubid` require); absent, they fall
   # back to the shared default / templated value.
   def render(entry)
-    display = entry.fetch("display")
-
     lines = [
-      "title: #{display} Index",
+      # Shared with #branding so a repo's Pages title cannot drift from the one
+      # its generated config claims.
+      "title: #{entry_title(entry)}",
       "description: >-",
-      "  #{description(entry)}",
+      # Every line indented, not just the first: an unindented continuation line
+      # would terminate the `>-` block and make the rendered _config.yml invalid
+      # YAML. Single-line values (all of them today) are unaffected.
+      entry_description(entry).to_s.lines.map { |l| "  #{l.chomp}" }.join("\n"),
       "paginate: #{defaults.fetch('paginate')}",
       "jekyll-index:",
-      "  favicon: #{sq(favicon(entry))}",
+      "  favicon: #{sq(entry_favicon(entry))}",
       "  source: #{sq(entry.fetch('source'))}",
       "  baseurl: #{sq(baseurl(entry))}",
       "  add_type_to_reference: true",
@@ -85,21 +120,38 @@ class DataIndexConfig
 
   private
 
+  # Nil-returning lookup; #entry raises on top of it.
+  def find_entry(repo)
+    repos.find { |e| e["repo"] == repo }
+  end
+
   # The raw.githubusercontent baseurl for an entry (repo + real default branch).
   def baseurl(entry)
     format(defaults.fetch("baseurl_template"),
            repo: entry.fetch("repo"), branch: entry.fetch("branch"))
   end
 
+  # The `entry_*` prefix is deliberate: #branding takes `favicon:`/`description:`
+  # keyword arguments, and bare `favicon` there would read as the parameter.
+  def entry_title(entry)
+    "#{entry.fetch('display')} Index"
+  end
+
   # Per-entry override or the shared default favicon.
-  def favicon(entry)
+  def entry_favicon(entry)
     override(entry, "favicon") || defaults.fetch("favicon")
   end
 
   # Per-entry override or the templated "Welcome to the <display> ..." line.
-  def description(entry)
+  def entry_description(entry)
     override(entry, "description") ||
       format(defaults.fetch("description_template"), display: entry.fetch("display"))
+  end
+
+  # What the workflow's retired shell step produced for a repo configs.yml does
+  # not cover: the slug, upcased. Keeps relaton-data-ietf building unchanged.
+  def derived_title(repo)
+    "#{self.class.flavor(repo).upcase} Index"
   end
 
   # Per-entry override or the shared default pubid require (`pubid`).
@@ -109,7 +161,13 @@ class DataIndexConfig
 
   # Read a per-entry string override, treating nil/blank as "not set".
   def override(entry, key)
-    value = entry[key]
+    present(entry[key])
+  end
+
+  # nil/blank -> nil. Blank must mean "not set" for #branding's arguments too:
+  # the workflow passes --title/--favicon/--description unconditionally, so an
+  # unset caller input arrives as "" and has to fall through to configs.yml.
+  def present(value)
     return nil if value.nil? || value.to_s.strip.empty?
 
     value

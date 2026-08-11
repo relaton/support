@@ -20,9 +20,23 @@ name: Deploy
 # both the "skip a failed crawler run" guard and the Pages concurrency group are
 # declared here, so no per-repo copy can drift or forget them.
 #
-# Optionally, a caller passes the per-flavor branding its `_config.yml` used to
-# carry — `title`, `favicon` and `description` (see relaton/relaton#96). Left
-# unset, the page carries no favicon and no description, exactly as before.
+# Per-flavor branding — `title`, `favicon` and `description` (relaton/relaton#96)
+# — is resolved HERE, from relaton/support's `data-index/configs.yml`, and not
+# passed by the caller. cimas.yml maps `.github/workflows/deploy.yml` as a
+# whole-file copy for 29 repos, so a `with:` block carrying branding is wiped on
+# the next `cimas sync` and the page silently loses its favicon and description —
+# nothing goes red. Keeping the caller byte-identical fleet-wide is what makes a
+# sync safe; see `data-index/README.adoc`.
+#
+# The three inputs remain declared and still win when a caller sets one
+# explicitly (a reusable workflow rejects an undeclared input at parse time, so
+# they could not be removed without breaking existing callers anyway). Blank —
+# what an omitted input arrives as — falls through to configs.yml.
+#
+# The trade this makes: relaton/support becomes a runtime dependency of every
+# Pages build, not just the source of this file. A bad configs.yml breaks all 29
+# at once, which is why the resolve step runs before the expensive build and
+# `job.workflow_sha` pins the data to the same commit as this workflow.
 #
 # Two source modes (input `source`):
 #   * gem (default) — install the released relaton-cli gem. Ruby only; the gem
@@ -39,20 +53,26 @@ on:
         required: false
         default: "gem"
         type: string
+      # The branding trio. Normally unset: `Resolve branding` below reads these
+      # per flavor from relaton/support's data-index/configs.yml. Setting one
+      # here overrides that repo's row for this caller only.
       title:
-        description: "Index page title (default: '<FLAVOR> Index' from the repo name)"
+        description: "Override the index page title (default: from data-index/configs.yml)"
         required: false
+        default: ""
         type: string
-      # Both build steps pass these through unconditionally: relaton-cli treats a
-      # blank value as absent, so the empty default keeps the output identical
-      # for callers that set neither.
       favicon:
-        description: "Index page favicon URL or output-relative path (default: none)"
+        description: "Override the favicon URL or output-relative path (default: from data-index/configs.yml)"
         required: false
         default: ""
         type: string
       description:
-        description: "Index page description (<meta name=\"description\"> and header subtitle)"
+        description: "Override the description (<meta name=\"description\"> and header subtitle)"
+        required: false
+        default: ""
+        type: string
+      support-ref:
+        description: "relaton/support ref to read branding from (default: this workflow's own commit)"
         required: false
         default: ""
         type: string
@@ -128,9 +148,59 @@ jobs:
     steps:
       - uses: actions/checkout@v4 # the data repo (has ./data)
 
+      # Must come AFTER the checkout above: a checkout into the workspace root
+      # clears the directory first, which would delete this one.
+      #
+      # `job.workflow_repository` and `job.workflow_sha` are the repo and commit
+      # THIS reusable workflow was loaded from — GitHub documents exactly this
+      # pair for a reusable workflow checking out its own source. So the resolver
+      # code and configs.yml always come from one commit, and
+      # `uses: .../data-deploy.yml@some-branch` reads that branch's branding with
+      # no caller-side input to set and remember to remove.
+      #
+      # Not the `github` context: a called workflow inherits the CALLER's, so
+      # `github.workflow_ref`/`workflow_sha` name the data repo's own deploy.yml,
+      # and `github.job_workflow_sha` is not a property at all — it is an OIDC
+      # token claim. An unknown property evaluates to null rather than failing,
+      # which would have silently resolved `ref:` to support's default branch.
+      - name: Checkout relaton/support (branding source of truth)
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ job.workflow_repository }}
+          ref: ${{ inputs.support-ref || job.workflow_sha }}
+          path: .relaton-support
+          # Nothing pushes from here; no reason to leave a credential in the
+          # workspace's .git/config.
+          persist-credentials: false
+          # Cone mode (the default) is correct — these are directories, not
+          # globs. Do not add sparse-checkout-cone-mode.
+          sparse-checkout: |
+            bin
+            lib
+            data-index
+
       - uses: ruby/setup-ruby@v1
         with:
           ruby-version: "3.4"
+
+      # Ahead of the source-specific steps on purpose: the git-source build
+      # exports BUNDLE_GEMFILE to $GITHUB_ENV for every later step, and a
+      # branding failure should surface before a ~10-minute frontend compile,
+      # not after it.
+      - name: Resolve branding
+        id: branding
+        # The inputs travel by env for the same reason the build steps below do,
+        # and so nothing caller-supplied is interpolated into this shell.
+        env:
+          TITLE: ${{ inputs.title }}
+          FAVICON: ${{ inputs.favicon }}
+          DESCRIPTION: ${{ inputs.description }}
+        run: |
+          ruby .relaton-support/bin/index-branding "$GITHUB_REPOSITORY" \
+            --title "$TITLE" \
+            --favicon "$FAVICON" \
+            --description "$DESCRIPTION" \
+            >> "$GITHUB_OUTPUT"
 
       # ---- gem source (default): install the released gem, Ruby only ----------
       - name: Install relaton-cli (released gem)
@@ -176,31 +246,24 @@ jobs:
           echo "BUNDLE_GEMFILE=$RUNNER_TEMP/Gemfile.index" >> "$GITHUB_ENV"
           BUNDLE_GEMFILE="$RUNNER_TEMP/Gemfile.index" bundle install
 
-      - name: Derive title
-        id: meta
-        run: |
-          title="${{ inputs.title }}"
-          if [ -z "$title" ]; then
-            flavor="${GITHUB_REPOSITORY##*/}"      # relaton-data-bipm
-            flavor="${flavor#relaton-data-}"        # bipm
-            title="$(echo "$flavor" | tr '[:lower:]' '[:upper:]') Index"
-          fi
-          echo "title=$title" >> "$GITHUB_OUTPUT"
-
       - name: Build index (gem source)
         if: inputs.source == 'gem'
-        # The branding values are free-form prose, and `${{ }}` is substituted as
-        # raw text before bash parses the line — an inlined description reading
-        # `IEC "TC 1" registry` would word-split into stray argv entries. Passing
-        # them by env hands the runner's verbatim value to the shell.
+        # All three branding values are free-form prose, and `${{ }}` is
+        # substituted as raw text before bash parses the line — an inlined
+        # description reading `IEC "TC 1" registry` would word-split into stray
+        # argv entries, and one containing $(...) would execute. Passing them by
+        # env hands the runner's verbatim value to the shell. `title` belongs
+        # here too now that it originates in relaton/support rather than in the
+        # calling repo's own file.
         env:
-          FAVICON: ${{ inputs.favicon }}
-          DESCRIPTION: ${{ inputs.description }}
+          TITLE: ${{ steps.branding.outputs.title }}
+          FAVICON: ${{ steps.branding.outputs.favicon }}
+          DESCRIPTION: ${{ steps.branding.outputs.description }}
         run: |
           relaton index "${{ inputs.data-dir }}" \
             --output _site \
             --mode "${{ inputs.mode }}" \
-            --title "${{ steps.meta.outputs.title }}" \
+            --title "$TITLE" \
             --favicon "$FAVICON" \
             --description "$DESCRIPTION" \
             --base-url "https://raw.githubusercontent.com/${GITHUB_REPOSITORY}/${GITHUB_REF_NAME}"
@@ -208,15 +271,17 @@ jobs:
       - name: Build index (git source)
         if: inputs.source == 'git'
         # BUNDLE_GEMFILE is exported to GITHUB_ENV in the build step above.
-        # FAVICON/DESCRIPTION travel by env for the same reason as the gem step.
+        # TITLE/FAVICON/DESCRIPTION travel by env for the same reason as the gem
+        # step.
         env:
-          FAVICON: ${{ inputs.favicon }}
-          DESCRIPTION: ${{ inputs.description }}
+          TITLE: ${{ steps.branding.outputs.title }}
+          FAVICON: ${{ steps.branding.outputs.favicon }}
+          DESCRIPTION: ${{ steps.branding.outputs.description }}
         run: |
           bundle exec relaton index "${{ github.workspace }}/${{ inputs.data-dir }}" \
             --output "${{ github.workspace }}/_site" \
             --mode "${{ inputs.mode }}" \
-            --title "${{ steps.meta.outputs.title }}" \
+            --title "$TITLE" \
             --favicon "$FAVICON" \
             --description "$DESCRIPTION" \
             --base-url "https://raw.githubusercontent.com/${GITHUB_REPOSITORY}/${GITHUB_REF_NAME}"

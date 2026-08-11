@@ -1,0 +1,63 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+# Resolve a relaton-data-* repo's Pages branding from data-index/configs.yml and
+# print it in `$GITHUB_OUTPUT` format. Run by the "Resolve branding" step of
+# .github/workflows/data-deploy.yml, which appends the result:
+#
+#   ruby .relaton-support/bin/index-branding "$GITHUB_REPOSITORY" \
+#     --title "$TITLE" --favicon "$FAVICON" --description "$DESCRIPTION" \
+#     >> "$GITHUB_OUTPUT"
+#
+# Branding is resolved centrally because cimas.yml maps
+# `.github/workflows/deploy.yml` as a whole-file copy for 29 repos: a `with:`
+# block carrying it is wiped on the next `cimas sync`, and the site silently
+# loses its favicon and description. See data-index/README.adoc.
+#
+# The three flags are passed unconditionally by the workflow, so a blank value
+# means "the caller set no input" and falls through to configs.yml.
+#
+# Usage:
+#   bin/index-branding relaton/relaton-data-iana
+#   bin/index-branding relaton-data-iana --favicon https://example.org/f.ico
+#   bin/index-branding iana --config path/to/configs.yml
+
+require "optparse"
+
+require_relative "../lib/data_index_config"
+require_relative "../lib/github_output"
+
+options = { config: DataIndexConfig::DEFAULT_CONFIG_PATH }
+parser = OptionParser.new do |o|
+  o.banner = "Usage: bin/index-branding OWNER/REPO [options]"
+  o.on("--title TITLE", "Explicit title, overriding configs.yml") { |v| options[:title] = v }
+  o.on("--favicon URL", "Explicit favicon, overriding configs.yml") { |v| options[:favicon] = v }
+  o.on("--description TEXT", "Explicit description, overriding configs.yml") do |v|
+    options[:description] = v
+  end
+  o.on("--config PATH", "Path to configs.yml") { |v| options[:config] = v }
+  o.on("-h", "--help", "Show this help") do
+    puts o
+    exit
+  end
+end
+parser.parse!(ARGV)
+
+if ARGV.size != 1
+  warn parser
+  exit 1
+end
+
+repo = ARGV.fetch(0)
+branding = DataIndexConfig.load(options[:config]).branding(
+  repo,
+  title: options[:title], favicon: options[:favicon], description: options[:description]
+)
+
+# Diagnostics on stderr so they reach the Actions log without landing in
+# $GITHUB_OUTPUT, which stdout is redirected to.
+warn "#{repo}: #{branding.map { |k, v| "#{k}=#{v.inspect}" }.join(' ')}"
+
+# Rendered whole and written once: a partial write would leave a dangling
+# heredoc opener and corrupt every later step's outputs.
+print GithubOutput.render(branding)
