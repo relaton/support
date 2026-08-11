@@ -14,6 +14,10 @@ name: Deploy
 #     deploy:
 #       uses: relaton/support/.github/workflows/data-deploy.yml@main
 #
+# Optionally, a caller passes the per-flavor branding its `_config.yml` used to
+# carry — `title`, `favicon` and `description` (see relaton/relaton#96). Left
+# unset, the page carries no favicon and no description, exactly as before.
+#
 # Two source modes (input `source`):
 #   * gem (default) — install the released relaton-cli gem. Ruby only; the gem
 #     ships the precompiled frontend bundle.
@@ -32,6 +36,19 @@ on:
       title:
         description: "Index page title (default: '<FLAVOR> Index' from the repo name)"
         required: false
+        type: string
+      # Both build steps pass these through unconditionally: relaton-cli treats a
+      # blank value as absent, so the empty default keeps the output identical
+      # for callers that set neither.
+      favicon:
+        description: "Index page favicon URL or output-relative path (default: none)"
+        required: false
+        default: ""
+        type: string
+      description:
+        description: "Index page description (<meta name=\"description\"> and header subtitle)"
+        required: false
+        default: ""
         type: string
       data-dir:
         description: "Folder of Relaton YAML documents"
@@ -129,21 +146,36 @@ jobs:
 
       - name: Build index (gem source)
         if: inputs.source == 'gem'
+        # The branding values are free-form prose, and `${{ }}` is substituted as
+        # raw text before bash parses the line — an inlined description reading
+        # `IEC "TC 1" registry` would word-split into stray argv entries. Passing
+        # them by env hands the runner's verbatim value to the shell.
+        env:
+          FAVICON: ${{ inputs.favicon }}
+          DESCRIPTION: ${{ inputs.description }}
         run: |
           relaton index "${{ inputs.data-dir }}" \
             --output _site \
             --mode "${{ inputs.mode }}" \
             --title "${{ steps.meta.outputs.title }}" \
+            --favicon "$FAVICON" \
+            --description "$DESCRIPTION" \
             --base-url "https://raw.githubusercontent.com/${GITHUB_REPOSITORY}/${GITHUB_REF_NAME}"
 
       - name: Build index (git source)
         if: inputs.source == 'git'
         # BUNDLE_GEMFILE is exported to GITHUB_ENV in the build step above.
+        # FAVICON/DESCRIPTION travel by env for the same reason as the gem step.
+        env:
+          FAVICON: ${{ inputs.favicon }}
+          DESCRIPTION: ${{ inputs.description }}
         run: |
           bundle exec relaton index "${{ github.workspace }}/${{ inputs.data-dir }}" \
             --output "${{ github.workspace }}/_site" \
             --mode "${{ inputs.mode }}" \
             --title "${{ steps.meta.outputs.title }}" \
+            --favicon "$FAVICON" \
+            --description "$DESCRIPTION" \
             --base-url "https://raw.githubusercontent.com/${GITHUB_REPOSITORY}/${GITHUB_REF_NAME}"
 
       - uses: actions/configure-pages@v4
