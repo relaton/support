@@ -44,7 +44,7 @@ change involved.
 
 `_config.yml` is unique per repo and is *repo-owned* — exactly like
 `relaton-data-oasis`, `-w3c`, and `-ids` already keep theirs. Cimas manages only
-the byte-identical plumbing (`deploy.yml`, `Gemfile.deploy`). This generator is the
+the byte-identical plumbing (`deploy.yml`). This generator is the
 single place the per-repo configs are produced; the output is committed into each
 data repo, where a maintainer may further tune it without a central clobber.
 
@@ -66,13 +66,57 @@ was committed, so the cron is not there for quiet days. It covers a crawler that
 never ran or was disabled, and upstream `relaton/relaton` changes that alter the
 generated index — at the price of a second full build per day.
 
+Those are the only two automatic triggers, plus `workflow_dispatch` for a human.
+Neither template builds on `push` or `pull_request` any more. A PR deploy ran the
+whole build — `npm ci` and the Vue compile under `source: git`, a full corpus
+parse, a Pages artifact upload — and then skipped the deploy job, because
+publication is gated on the repo's default branch; and a PR crawl fetched an
+entire corpus and discarded it, since the shared `crawler.yml` gates its "Push
+data" step on `github.event_name != 'pull_request'`. `push` bought little
+either: on Deploy it never fired on crawler commits at all (`GITHUB_TOKEN`
+pushes raise no events), and on Crawler it only re-ran what the cron runs anyway.
+The trigger sets are pinned by `spec/data_deploy_caller_template_spec.rb`.
+
+Two costs to know about. A hand-committed data or config fix no longer
+republishes immediately — it waits for the `0 18 * * *` cron, or a
+`workflow_dispatch`. And since each data repo carries its own `crawler.rb`, the
+PR run was the only non-mutating way to exercise a change to it: a dispatched
+crawl is not covered by the `pull_request` gate above, so it commits and pushes
+its crawled corpus to whichever branch it runs on.
+
+[CAUTION]
+====
+A required status check that can no longer be triggered leaves every future PR
+permanently pending, so a repo listing `Deploy` or `Crawler` as required would
+break on this change. Checked at the time of writing: *no* `relaton-data-*` repo
+has branch protection configured at all, so there is nothing to unpick. Re-check
+before a much later sync — `gh api` writes its error body to stdout on a 404, so
+filter after it rather than with `--jq`:
+
+[source,sh]
+----
+for r in $(gh repo list relaton --limit 200 --json name -q '.[].name' | grep '^relaton-data-'); do
+  b=$(gh repo view "relaton/$r" --json defaultBranchRef -q .defaultBranchRef.name)
+  gh api "repos/relaton/$r/branches/$b/protection" 2>/dev/null |
+    jq -e -r --arg r "$r" \
+      '.required_status_checks.contexts // [] | select(length > 0) | "\($r): \(.)"'
+done
+----
+
+What PR-time validation remains is thinner than it looks: `check_data.yml` keeps
+its own `push`/`pull_request` triggers, but `cimas.yml` maps it into only 3 of
+the 29 repos (bipm, iho, iso). For the other 26, a PR touching `data/**` now runs
+no CI at all.
+====
+
 Two things a caller deliberately does *not* declare, because `data-deploy.yml`
 declares them centrally for the whole fleet: the `if:` that skips a `workflow_run`
 whose crawler failed, and the Pages `concurrency` group. That group is keyed on
 the deploy job's own default-branch gate, so only runs that can actually publish
 share a queue — GitHub keeps just one *pending* run per group and cancels it when
-the next arrives, so a tag push or PR build sharing the queue could otherwise
-drop a run carrying fresh data.
+the next arrives, so a build that cannot publish (a `workflow_dispatch` from a
+non-default branch, or a caller whose triggers have drifted) could otherwise drop
+a run carrying fresh data.
 
 [NOTE]
 ====
@@ -111,6 +155,60 @@ done
 ----
 ====
 
+== How the index is delivered (there is no `mode`)
+
+`data-deploy.yml` declares no `mode` input and passes no `--mode`. There is no
+per-repo or fleet-wide delivery setting left to choose.
+
+It used to be. `relaton index` took `--mode embedded|dom|static-json`, which
+traded a crawler-indexable DOM against page weight, and that choice mattered
+because the entire corpus went into *one* page: `relaton-data-3gpp` serves a
+151,688,883-byte `index.html`, and `relaton-data-ids` would produce ~290 MB.
+Compression is not what made those unusable — GitHub Pages gzips HTML, so 3gpp's
+page is only ~6.4 MB on the wire — the browser still parses the full text and
+builds a DOM node per document.
+
+relaton-cli now always emits a sharded site, which fixes the parse and heap cost
+that compression could not:
+
+----
+_site/index.html            ~110 KB regardless of corpus size
+_site/search-NNNN.json      summary records, 5000/shard, loaded progressively
+_site/detail-NNNN.json      the rich detail fields, 500/shard, fetched on open
+----
+
+`search.json` is no longer written, and `--shard-size`, `--detail-shard-size` and
+`--[no-]detail` all have working defaults, so this workflow passes none of them.
+
+[IMPORTANT]
+====
+Removing the input here had to land *before* relaton-cli's change, and it cannot
+be reverted piecemeal:
+
+* 12 of the 32 `relaton-data-*` callers pass `source: git`, building relaton-cli
+  from `relaton/relaton@main` — for those there is no gem release between the two
+  repos to act as a gate, and they pick the change up on their next run. The
+  other 20 are on the default `source: gem` and are gated on a release.
+* A stale `--mode` fails in a way that reads as something else. Thor's legacy
+  default prints a usage error and exits *0*, so the build step goes green
+  having written no `_site` at all, and the run then dies at
+  `actions/upload-pages-artifact` with `tar: _site/: Cannot open: No such file or
+  directory` — pointing at the wrong step. relaton-cli's change adds
+  `Command.exit_on_failure?`, which will make it exit 1 where the fault is; that
+  is part of the same unmerged change, not something already in place.
+* The input cannot come back on its own either: a caller `with:` naming an input
+  the called workflow does not declare fails the run with `Invalid input, 'mode'
+  is not defined in the referenced workflow`, so callers and this file have to
+  move together. No `relaton-data-*` caller passes `mode:` today, and
+  `spec/data_deploy_workflow_spec.rb` pins the absence at this end.
+====
+
+Two consequences of the fetch-based page worth knowing: it must be served over
+`http(s)://`, so a local `file://` preview of `_site/index.html` now shows an
+empty index; and the shards must not be pre-compressed in the deploy — Pages
+gzips them already, and a stored `.json.gz` would be served as
+`application/gzip` with no `Content-Encoding` and never inflated.
+
 == The pubid rule
 
 The theme plugin renders a structured index `:id` (a Hash) by instantiating a
@@ -130,10 +228,13 @@ The theme plugin now reconstructs a `_type:`-tagged Hash `:id` via
 `relaton__jekyll-theme-relaton-data-index__render-pubid-structured-ids.md`, landed) and
 degrades to a compact fallback string if that gem is missing. For real DocIDs the pubid
 gem must therefore be in the *build* bundle — which is why the deploy bundle
-(`cimas-config/gh-actions/data/Gemfile.deploy`) `eval_gemfile`s each data repo's own
+(`cimas-config/gh-actions/data/Gemfile.deploy`) `eval_gemfile`d each data repo's own
 Gemfile to layer Jekyll on top of that repo's relaton + pubid pins. With both in one
-bundle, the tier-C flavors below render citable DocIDs rather than a fallback like
-`2010 IEC IEC`.
+bundle, the tier-C flavors below rendered citable DocIDs rather than a fallback like
+`2010 IEC IEC`. That bundle has since been deleted along with its 29 Cimas
+mappings: `relaton index` resolves its own dependencies (`source: gem` installs
+relaton-cli, `source: git` writes `$RUNNER_TEMP/Gemfile.index`), and it reads the
+data YAML directly without calling pubid at all.
 ====
 
 [cols="1,3",options="header"]
@@ -205,7 +306,7 @@ gh api -X POST repos/relaton/relaton-data-<repo>/pages \
 cp data-index/generated/<repo>_config.yml <data repo>/_config.yml
 # (or regenerate on the fly: bin/gen-data-index-config <repo>)
 ----
-. *Roll the Cimas plumbing* (`deploy.yml`, `Gemfile.deploy`) to every data repo —
+. *Roll the Cimas plumbing* (`deploy.yml`) to every data repo —
   from the support repo root, per `../README.adoc`:
 +
 [source,sh]
@@ -224,12 +325,14 @@ bin/check-data-pages              # exits non-zero until every repo is 200
 The site should list DocID -> file with working pagination and a citable DocID
 per row.
 
-TIP: Start with Tier A (renders cleanly today); Tier B/C need the flavor pubid gem
-in the build bundle, which `cimas-config/gh-actions/data/Gemfile.deploy` already
-provides (it `eval_gemfile`s each repo's own Gemfile). See "Rendering readiness".
+TIP: Start with Tier A (renders cleanly today); Tier B/C needed the flavor pubid
+gem in the build bundle, which the now-deleted
+`cimas-config/gh-actions/data/Gemfile.deploy` supplied by `eval_gemfile`ing each
+repo's own Gemfile. See "Rendering readiness".
 
 NOTE: `configs.yml` and `../cimas-config/cimas.yml` must agree on every repo's
-`branch:` and both must map `deploy.yml` + `Gemfile.deploy`; a drift silently
+`branch:` and both must map `deploy.yml` (and, since the Jekyll build was
+retired, must map no `Gemfile.deploy`); a drift silently
 skips the publish (the deploy job only runs on the repo's default branch).
 `spec/cimas_data_pages_spec.rb` enforces this — run `bundle exec rspec` after
 editing either file.

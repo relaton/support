@@ -1,14 +1,15 @@
 # Guards the Cimas caller template that Cimas syncs into every relaton-data-*
 # repo as `.github/workflows/deploy.yml`.
 #
-# The problem it encodes: the template's `push` trigger cannot fire on crawled
-# data. crawler.yml's "Push data" step commits with the default
-# actions/checkout GITHUB_TOKEN, and GitHub deliberately raises no workflow
-# events for GITHUB_TOKEN pushes. That left the daily cron as the only path from
-# crawl to Pages — and it assumed a fixed one-hour gap that scheduled dispatch
-# does not honour (11 of relaton-data-iana's last 12 Crawler runs *started* at
-# or after 14:58 UTC despite a 14:00 cron, several past 16:00), so the 15:00
-# deploy usually indexed the previous day's data.
+# The problem it encodes: a `push` trigger could never fire on crawled data.
+# crawler.yml's "Push data" step commits with the default actions/checkout
+# GITHUB_TOKEN, and GitHub deliberately raises no workflow events for
+# GITHUB_TOKEN pushes. That left the daily cron as the only path from crawl to
+# Pages — and it assumed a fixed one-hour gap that scheduled dispatch does not
+# honour (11 of relaton-data-iana's last 12 Crawler runs *started* at or after
+# 14:58 UTC despite a 14:00 cron, several past 16:00), so the 15:00 deploy
+# usually indexed the previous day's data. Both templates have since dropped
+# `push` and `pull_request` entirely; what remains is asserted below.
 #
 # Ordering is now deterministic via `workflow_run`. The couplings below are all
 # silent when broken — nothing goes red in CI, the fleet just quietly stops
@@ -19,6 +20,9 @@ RSpec.describe "cimas-config/gh-actions/data/deploy.yml" do
 
   deploy = template.call("deploy.yml")
   crawler = template.call("crawler.yml")
+  # The authority on which repos this template is synced into, and on each one's
+  # real default branch.
+  cimas = YAML.safe_load_file(File.join(repo_root, "cimas-config/cimas.yml"))
   # Psych reads the unquoted `on:` key as YAML 1.1 boolean true.
   triggers = deploy.fetch(true)
   workflow_run = triggers["workflow_run"]
@@ -45,13 +49,66 @@ RSpec.describe "cimas-config/gh-actions/data/deploy.yml" do
       expect(workflow_run.fetch("types")).to eq(["completed"])
     end
 
-    it "accepts the same default branches as the push trigger" do
-      # `workflow_run`'s branch filter matches the *triggering* run's branch.
-      # Listing the same set as `push` keeps the template repo-agnostic (many
-      # relaton-data-* repos moved their default branch to v2), so this needs no
-      # per-repo edit. Publication is still gated on the repo's real default
-      # branch inside data-deploy.yml.
-      expect(workflow_run.fetch("branches")).to eq(triggers.fetch("push").fetch("branches"))
+    it "accepts every default branch name in use across the fleet" do
+      # `workflow_run`'s branch filter matches the *triggering* run's branch, so
+      # this list has to cover every default branch the synced repos actually
+      # use (23 of the 29 are on v2, the rest on main or master) for the file to
+      # stay repo-agnostic. Publication is still gated on the repo's real
+      # default branch inside data-deploy.yml.
+      #
+      # Derived from cimas.yml rather than hardcoded, and compared against the
+      # `push` trigger before that — this template has neither a `push` block
+      # any more nor a list that is right by construction. A repo moving to a
+      # fourth default branch would otherwise silently stop republishing: the
+      # trigger just never fires there, with nothing red anywhere.
+      repositories = cimas.fetch("repositories")
+      defaults = cimas.fetch("groups").fetch("data").filter_map do |name|
+        repositories.dig(name, "branch") if
+          (repositories.dig(name, "files") || {}).key?(".github/workflows/deploy.yml")
+      end
+
+      expect(defaults).not_to be_empty
+      expect(workflow_run.fetch("branches")).to include(*defaults.uniq)
+    end
+  end
+
+  describe "what neither template triggers on any more" do
+    crawler_triggers = crawler.fetch(true)
+
+    it "crawls only on a schedule or by hand" do
+      # A `pull_request` crawl fetched an entire corpus and then threw it away:
+      # crawler.yml's "Push data" step is gated `github.event_name !=
+      # 'pull_request'`. On the largest flavors (ids at 166,658 documents, 3gpp
+      # at 88,464) that is a very long run for nothing. `push` only re-ran what
+      # the cron runs anyway, and `workflow_dispatch` covers wanting one sooner.
+      #
+      # The acknowledged cost: each data repo carries its own `crawler.rb`, and
+      # the PR run was the only way to exercise a change to it without
+      # committing — a dispatch run is not gated by that step and pushes its
+      # crawled corpus to the branch it runs on.
+      expect(crawler_triggers.keys).to contain_exactly("schedule", "workflow_dispatch")
+    end
+
+    it "deploys only from a finished crawl, the fallback cron, or by hand" do
+      # A `pull_request` deploy ran the whole build — npm ci and the Vue compile
+      # under `source: git`, then a full corpus parse and a Pages artifact
+      # upload — and then skipped `deploy`, because publication is gated on the
+      # repo's default branch. 10-15 minutes per PR for output nobody can see.
+      #
+      # `workflow_run` stays: it is not push-driven, and it is the only thing
+      # that makes publication track the crawl rather than a cron guessed to
+      # land after it (see the note at the top of this file).
+      expect(triggers.keys).to contain_exactly("workflow_run", "schedule", "workflow_dispatch")
+    end
+
+    it "leaves no push or pull_request trigger in either template" do
+      # Stated separately from the two `contain_exactly` examples above because
+      # this is the invariant that fails silently: re-adding either trigger just
+      # burns Actions minutes fleet-wide, in 29 repos at once, with nothing red.
+      [triggers, crawler_triggers].each do |t|
+        expect(t).not_to have_key("push")
+        expect(t).not_to have_key("pull_request")
+      end
     end
   end
 

@@ -1,8 +1,8 @@
 # Guards the two-track Pages rollout against the "silent 404" class the cimas.yml
 # `# data` comment warns about: the per-repo config (data-index/configs.yml) and the
 # Cimas plumbing (cimas-config/cimas.yml) must agree on every target relaton-data-*
-# repo. If a repo's `branch:` drifts between the two files, or its deploy.yml /
-# Gemfile.deploy mapping goes missing, the reusable data-deploy.yml silently skips
+# repo. If a repo's `branch:` drifts between the two files, or its deploy.yml
+# mapping goes missing, the reusable data-deploy.yml silently skips
 # the Pages publish (it only deploys from the repo's real default branch) and the
 # site 404s with nothing red in CI. This spec makes that drift a test failure.
 require "data_index_config"
@@ -21,7 +21,6 @@ RSpec.describe "configs.yml <-> cimas.yml consistency" do
   # leaking to top-level Object; the nested `it` blocks close over it.
   deploy_mapping = {
     ".github/workflows/deploy.yml" => "gh-actions/data/deploy.yml",
-    "Gemfile.deploy" => "gh-actions/data/Gemfile.deploy",
   }.freeze
 
   configs.repos.each do |entry|
@@ -47,12 +46,22 @@ RSpec.describe "configs.yml <-> cimas.yml consistency" do
           .to eq(entry.fetch("branch"))
       end
 
-      it "maps both deploy.yml and Gemfile.deploy from the data templates" do
+      it "maps deploy.yml from the data template" do
         files = repositories.fetch(cimas_key).fetch("files")
         deploy_mapping.each do |dest, src|
           expect(files[dest]).to eq(src),
                                  "expected #{cimas_key} to map #{dest} <- #{src}"
         end
+      end
+
+      it "maps no Gemfile.deploy" do
+        # The inverse of the guard this example replaces. `relaton index` needs
+        # no Gemfile: `source: gem` installs relaton-cli, `source: git` writes
+        # $RUNNER_TEMP/Gemfile.index and points BUNDLE_GEMFILE at it. A restored
+        # mapping would re-create the retired Jekyll bundle in 29 repos and
+        # re-establish the "this repo builds with Jekyll" signal the migration
+        # removes — harmless to the build, which is exactly why it would stick.
+        expect(repositories.fetch(cimas_key).fetch("files")).not_to have_key("Gemfile.deploy")
       end
     end
   end

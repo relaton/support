@@ -4,9 +4,10 @@ name: Deploy
 #
 # Replaces the previous Jekyll build (checkout jekyll-theme-relaton-data-index,
 # merge _config.yml, `jekyll build`) with a single `relaton index` run:
-# relaton-cli reads the repo's ./data folder and emits a self-contained,
-# crawler-indexable index that inlines a compiled Vue+Tailwind bundle.
-# See relaton/relaton#83.
+# relaton-cli reads the repo's ./data folder and emits a page that inlines a
+# compiled Vue+Tailwind bundle and fetches its documents as JSON shards. See
+# relaton/relaton#83 — and note the shift described below: the output was
+# originally self-contained and crawler-indexable, and is now neither.
 #
 # Callers need no changes — it stays `workflow_call` with no required inputs:
 #
@@ -37,6 +38,29 @@ name: Deploy
 # Pages build, not just the source of this file. A bad configs.yml breaks all 29
 # at once, which is why the resolve step runs before the expensive build and
 # `job.workflow_sha` pins the data to the same commit as this workflow.
+#
+# There is no `mode` input. `relaton index` used to take
+# `--mode embedded|dom|static-json`, trading a crawler-indexable DOM against page
+# weight — a choice that mattered because the whole corpus went into ONE page
+# (relaton-data-3gpp's is 151,688,883 bytes; relaton-data-ids' would be ~290 MB —
+# only ~6.4 MB on the wire once Pages gzips it, but the browser still parses the
+# full text and builds a DOM node per document, which is what made them
+# unopenable). relaton-cli now always emits sharded JSON — `search-NNNN.json`
+# summaries loaded progressively, `detail-NNNN.json` fetched when a panel opens,
+# behind a ~110 KB index.html — so nothing is left to choose and the flag is
+# gone rather than deprecated.
+#
+# This workflow must stop passing `--mode` BEFORE that lands, for the 12 of 32
+# relaton-data-* callers that pass `source: git` and therefore build relaton-cli
+# from relaton/relaton@main: they pick the removal up on their next run, with no
+# release to gate it. The other 20 are on the default `source: gem` and are gated
+# on a relaton-cli release.
+#
+# The input cannot come back on its own either: a caller `with:` naming an input
+# the called workflow does not declare fails the run immediately with "Invalid
+# input, 'mode' is not defined in the referenced workflow", so callers and this
+# file move together. Verified at the time of writing: no relaton-data-* caller
+# passes one.
 #
 # Two source modes (input `source`):
 #   * gem (default) — install the released relaton-cli gem. Ruby only; the gem
@@ -81,11 +105,6 @@ on:
         required: false
         default: "data"
         type: string
-      mode:
-        description: "Data delivery mode: embedded | dom | static-json"
-        required: false
-        default: "embedded"
-        type: string
       relaton-cli-version:
         description: "gem source: relaton-cli version to install (default: latest; e.g. add to pin a prerelease)"
         required: false
@@ -122,9 +141,10 @@ permissions:
 # `queue: single` a *pending* run is cancelled the moment a third joins its
 # group, so anything parked in the deployment queue that will never deploy can
 # drop a queued run carrying freshly crawled data — the staleness this
-# workflow's triggers exist to avoid. Pull requests, tag pushes and pushes to a
-# non-default branch all build for ~10 minutes and then skip `deploy`, so they
-# are keyed by ref into groups of their own.
+# workflow's triggers exist to avoid. Any run that builds for ~10 minutes and
+# then skips `deploy` — a `workflow_dispatch` from a non-default branch, or a
+# pull request or tag push from a caller that still triggers on them, which the
+# Cimas template no longer does — is keyed by ref into a group of its own.
 #
 # The discriminator is the deploy job's own gate, so the two cannot drift.
 concurrency:
@@ -262,7 +282,6 @@ jobs:
         run: |
           relaton index "${{ inputs.data-dir }}" \
             --output _site \
-            --mode "${{ inputs.mode }}" \
             --title "$TITLE" \
             --favicon "$FAVICON" \
             --description "$DESCRIPTION" \
@@ -280,7 +299,6 @@ jobs:
         run: |
           bundle exec relaton index "${{ github.workspace }}/${{ inputs.data-dir }}" \
             --output "${{ github.workspace }}/_site" \
-            --mode "${{ inputs.mode }}" \
             --title "$TITLE" \
             --favicon "$FAVICON" \
             --description "$DESCRIPTION" \

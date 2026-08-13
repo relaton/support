@@ -1,19 +1,19 @@
 name: Deploy
 
+# A finished crawl, the fallback cron, or a human. Nothing here builds on a
+# push.
+#
+# Dropped `pull_request`: publication is gated on the repo's default branch
+# inside data-deploy.yml, so a PR ran the whole build — npm ci and the Vue
+# compile under `source: git`, then a full corpus parse and a Pages artifact
+# upload, 10-15 minutes on a large flavor — and then skipped the deploy job.
+#
+# Dropped `push`: it never fired on crawler commits anyway (crawler.yml pushes
+# with the default actions/checkout GITHUB_TOKEN, and GitHub deliberately raises
+# no workflow events for those, to avoid recursion), so it only ever covered
+# human pushes. The cost of losing it: a hand-committed data or config fix now
+# waits for the cron below, or a `workflow_dispatch`.
 on:
-  push:
-    # Include v2: many relaton-data-* repos moved their default branch to v2.
-    # The reusable data-deploy.yml still gates publication on the repo's actual
-    # default branch, so listing all three here is safe for main/master repos.
-    #
-    # NOTE: this trigger does NOT fire on crawler commits. crawler.yml pushes
-    # its data with the default actions/checkout GITHUB_TOKEN, and GitHub
-    # deliberately raises no workflow events for GITHUB_TOKEN pushes (it would
-    # recurse). Fresh data reaches Pages via `workflow_run` below; this trigger
-    # only ever covers human pushes.
-    branches: [ master, main, v2 ]
-    tags: [ v* ]
-  pull_request:
   # Publish because the crawl finished, not an hour after it was meant to.
   # Scheduled dispatch drifts badly under load: 11 of relaton-data-iana's last
   # 12 Crawler runs *started* at or after 14:58 UTC despite a 14:00 cron,
@@ -22,10 +22,12 @@ on:
   #
   # `workflows:` matches crawler.yml's `name:`; Cimas syncs both templates, so
   # they stay in step (pinned by spec/data_deploy_caller_template_spec.rb).
-  # `branches:` filters the *triggering* run's branch, so the same repo-agnostic
-  # set as `push` above needs no per-repo edit. The run itself is against the
-  # repo's default branch, which keeps data-deploy.yml's publish gate and the
-  # raw-YAML --base-url links correct.
+  # `branches:` filters the *triggering* run's branch: listing every default
+  # branch name in use across the fleet (23 of the 29 data repos are on v2, the
+  # rest on main or master) keeps this file repo-agnostic, so it needs no
+  # per-repo edit. The run itself is against the repo's default branch, which
+  # keeps data-deploy.yml's publish gate and the raw-YAML --base-url links
+  # correct.
   workflow_run:
     workflows: [ Crawler ]
     types: [ completed ]

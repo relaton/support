@@ -263,7 +263,6 @@ repositories:
     files:
       .github/workflows/crawler.yml: gh-actions/data/crawler.yml
       .github/workflows/deploy.yml: gh-actions/data/deploy.yml
-      Gemfile.deploy: gh-actions/data/Gemfile.deploy
       .github/workflows/keep-alive.yml: gh-actions/master/keep-alive.yml
   relaton-data-ietf:
     remote: ssh://git@github.com/relaton/relaton-data-ietf
@@ -271,7 +270,6 @@ repositories:
     files:
       .github/workflows/crawler.yml: gh-actions/data/crawler.yml
       .github/workflows/deploy.yml: gh-actions/data/deploy.yml
-      Gemfile.deploy: gh-actions/data/Gemfile.deploy
       .github/workflows/keep-alive.yml: gh-actions/master/keep-alive.yml
   relaton-data-itu-r:
     remote: ssh://git@github.com/relaton/relaton-data-itu-r
@@ -279,7 +277,6 @@ repositories:
     files:
       .github/workflows/crawler.yml: gh-actions/data/crawler.yml
       .github/workflows/deploy.yml: gh-actions/data/deploy.yml
-      Gemfile.deploy: gh-actions/data/Gemfile.deploy
       .github/workflows/keep-alive.yml: gh-actions/master/keep-alive.yml
   relaton-data-ecma:
     remote: ssh://git@github.com/relaton/relaton-data-ecma
@@ -287,7 +284,6 @@ repositories:
     files:
       .github/workflows/crawler.yml: gh-actions/data/crawler.yml
       .github/workflows/deploy.yml: gh-actions/data/deploy.yml
-      Gemfile.deploy: gh-actions/data/Gemfile.deploy
       .github/workflows/keep-alive.yml: gh-actions/master/keep-alive.yml
   relaton-data-bipm:
     remote: ssh://git@github.com/relaton/relaton-data-bipm
@@ -296,7 +292,6 @@ repositories:
       .github/workflows/check_data.yml: gh-actions/data/check_data.yml
       .github/workflows/crawler.yml: gh-actions/data/crawler.yml
       .github/workflows/deploy.yml: gh-actions/data/deploy.yml
-      Gemfile.deploy: gh-actions/data/Gemfile.deploy
       .github/workflows/keep-alive.yml: gh-actions/master/keep-alive.yml
   relaton-data-iho:
     remote: ssh://git@github.com/relaton/relaton-data-iho
@@ -304,7 +299,6 @@ repositories:
     files:
       .github/workflows/check_data.yml: gh-actions/data/check_data.yml
       .github/workflows/deploy.yml: gh-actions/data/deploy.yml
-      Gemfile.deploy: gh-actions/data/Gemfile.deploy
       .github/workflows/keep-alive.yml: gh-actions/master/keep-alive.yml
   relaton-data-calconnect:
     remote: ssh://git@github.com/relaton/relaton-data-calconnect
@@ -312,7 +306,6 @@ repositories:
     files:
       .github/workflows/crawler.yml: gh-actions/data/crawler.yml
       .github/workflows/deploy.yml: gh-actions/data/deploy.yml
-      Gemfile.deploy: gh-actions/data/Gemfile.deploy
       .github/workflows/keep-alive.yml: gh-actions/master/keep-alive.yml
   relaton-data-nist:
     remote: ssh://git@github.com/relaton/relaton-data-nist
@@ -320,7 +313,6 @@ repositories:
     files:
       .github/workflows/crawler.yml: gh-actions/data/crawler.yml
       .github/workflows/deploy.yml: gh-actions/data/deploy.yml
-      Gemfile.deploy: gh-actions/data/Gemfile.deploy
       .github/workflows/keep-alive.yml: gh-actions/master/keep-alive.yml
   relaton-data-ogc:
     remote: ssh://git@github.com/relaton/relaton-data-ogc
@@ -328,7 +320,6 @@ repositories:
     files:
       .github/workflows/crawler.yml: gh-actions/data/crawler.yml
       .github/workflows/deploy.yml: gh-actions/data/deploy.yml
-      Gemfile.deploy: gh-actions/data/Gemfile.deploy
       .github/workflows/keep-alive.yml: gh-actions/master/keep-alive.yml
   relaton-data-iso:
     remote: ssh://git@github.com/relaton/relaton-data-iso
@@ -336,7 +327,6 @@ repositories:
     files:
       .github/workflows/check_data.yml: gh-actions/data/check_data.yml
       .github/workflows/deploy.yml: gh-actions/data/deploy.yml
-      Gemfile.deploy: gh-actions/data/Gemfile.deploy
       .github/workflows/keep-alive.yml: gh-actions/master/keep-alive.yml
   relaton-data-w3c:
     remote: ssh://git@github.com/relaton/relaton-data-w3c
@@ -344,7 +334,6 @@ repositories:
     files:
       .github/workflows/crawler.yml: gh-actions/data/crawler.yml
       .github/workflows/deploy.yml: gh-actions/data/deploy.yml
-      Gemfile.deploy: gh-actions/data/Gemfile.deploy
       .github/workflows/keep-alive.yml: gh-actions/master/keep-alive.yml
   relaton-data-iana:
     remote: ssh://git@github.com/relaton/relaton-data-iana
@@ -352,7 +341,6 @@ repositories:
     files:
       .github/workflows/crawler.yml: gh-actions/data/crawler.yml
       .github/workflows/deploy.yml: gh-actions/data/deploy.yml
-      Gemfile.deploy: gh-actions/data/Gemfile.deploy
       .github/workflows/keep-alive.yml: gh-actions/master/keep-alive.yml
   relaton-data-3gpp:
     remote: ssh://git@github.com/relaton/relaton-data-3gpp
@@ -360,7 +348,6 @@ repositories:
     files:
       .github/workflows/crawler.yml: gh-actions/data/crawler.yml
       .github/workflows/deploy.yml: gh-actions/data/deploy.yml
-      Gemfile.deploy: gh-actions/data/Gemfile.deploy
       .github/workflows/keep-alive.yml: gh-actions/master/keep-alive.yml
   relaton-data-oasis:
     remote: ssh://git@github.com/relaton/relaton-data-oasis
@@ -368,7 +355,6 @@ repositories:
     files:
       .github/workflows/crawler.yml: gh-actions/data/crawler.yml
       .github/workflows/deploy.yml: gh-actions/data/deploy.yml
-      Gemfile.deploy: gh-actions/data/Gemfile.deploy
       .github/workflows/keep-alive.yml: gh-actions/master/keep-alive.yml
   relaton-data-ieee:
     remote: ssh://git@github.com/relaton/relaton-data-ieee
@@ -376,14 +362,12 @@ repositories:
     files:
       .github/workflows/crawler.yml: gh-actions/data/crawler.yml
       .github/workflows/deploy.yml: gh-actions/data/deploy.yml
-      Gemfile.deploy: gh-actions/data/Gemfile.deploy
       .github/workflows/keep-alive.yml: gh-actions/master/keep-alive.yml
   relaton-data-iec:
     remote: ssh://git@github.com/relaton/relaton-data-iec
     branch: v2
     files:
       .github/workflows/deploy.yml: gh-actions/data/deploy.yml
-      Gemfile.deploy: gh-actions/data/Gemfile.deploy
       .github/workflows/keep-alive.yml: gh-actions/master/keep-alive.yml
   relaton-data-rfcsubseries:
     remote: ssh://git@github.com/relaton/relaton-data-rfcsubseries
@@ -391,7 +375,6 @@ repositories:
     files:
       .github/workflows/crawler.yml: gh-actions/data/crawler.yml
       .github/workflows/deploy.yml: gh-actions/data/deploy.yml
-      Gemfile.deploy: gh-actions/data/Gemfile.deploy
       .github/workflows/keep-alive.yml: gh-actions/master/keep-alive.yml
   relaton-data-rfcs:
     remote: ssh://git@github.com/relaton/relaton-data-rfcs
@@ -399,7 +382,6 @@ repositories:
     files:
       .github/workflows/crawler.yml: gh-actions/data/crawler.yml
       .github/workflows/deploy.yml: gh-actions/data/deploy.yml
-      Gemfile.deploy: gh-actions/data/Gemfile.deploy
       .github/workflows/keep-alive.yml: gh-actions/master/keep-alive.yml
   rawdata-bipm-metrologia:
     remote: ssh://git@github.com/relaton/rawdata-bipm-metrologia
@@ -413,7 +395,6 @@ repositories:
     files:
       .github/workflows/crawler.yml: gh-actions/data/crawler.yml
       .github/workflows/deploy.yml: gh-actions/data/deploy.yml
-      Gemfile.deploy: gh-actions/data/Gemfile.deploy
       .github/workflows/keep-alive.yml: gh-actions/master/keep-alive.yml
   relaton-data-xsf:
     remote: ssh://git@github.com/relaton/relaton-data-xsf
@@ -421,7 +402,6 @@ repositories:
     files:
       .github/workflows/crawler.yml: gh-actions/data/crawler.yml
       .github/workflows/deploy.yml: gh-actions/data/deploy.yml
-      Gemfile.deploy: gh-actions/data/Gemfile.deploy
       .github/workflows/keep-alive.yml: gh-actions/master/keep-alive.yml
   relaton-data-ccsds:
     remote: ssh://git@github.com/relaton/relaton-data-ccsds
@@ -429,7 +409,6 @@ repositories:
     files:
       .github/workflows/crawler.yml: gh-actions/data/crawler.yml
       .github/workflows/deploy.yml: gh-actions/data/deploy.yml
-      Gemfile.deploy: gh-actions/data/Gemfile.deploy
       .github/workflows/keep-alive.yml: gh-actions/master/keep-alive.yml
   relaton-data-etsi:
     remote: ssh://git@github.com/relaton/relaton-data-etsi
@@ -437,7 +416,6 @@ repositories:
     files:
       .github/workflows/crawler.yml: gh-actions/data/crawler.yml
       .github/workflows/deploy.yml: gh-actions/data/deploy.yml
-      Gemfile.deploy: gh-actions/data/Gemfile.deploy
       .github/workflows/keep-alive.yml: gh-actions/master/keep-alive.yml
   relaton-data-plateau:
     remote: ssh://git@github.com/relaton/relaton-data-plateau
@@ -445,7 +423,6 @@ repositories:
     files:
       .github/workflows/crawler.yml: gh-actions/data/crawler.yml
       .github/workflows/deploy.yml: gh-actions/data/deploy.yml
-      Gemfile.deploy: gh-actions/data/Gemfile.deploy
       .github/workflows/keep-alive.yml: gh-actions/master/keep-alive.yml
   relaton-data-jis:
     remote: ssh://git@github.com/relaton/relaton-data-jis
@@ -453,7 +430,6 @@ repositories:
     files:
       .github/workflows/crawler.yml: gh-actions/data/crawler.yml
       .github/workflows/deploy.yml: gh-actions/data/deploy.yml
-      Gemfile.deploy: gh-actions/data/Gemfile.deploy
       .github/workflows/keep-alive.yml: gh-actions/master/keep-alive.yml
   relaton-data-adobe:
     remote: ssh://git@github.com/relaton/relaton-data-adobe
@@ -461,7 +437,6 @@ repositories:
     files:
       .github/workflows/crawler.yml: gh-actions/data/crawler.yml
       .github/workflows/deploy.yml: gh-actions/data/deploy.yml
-      Gemfile.deploy: gh-actions/data/Gemfile.deploy
       .github/workflows/keep-alive.yml: gh-actions/master/keep-alive.yml
   relaton-data-easc:
     remote: ssh://git@github.com/relaton/relaton-data-easc
@@ -469,7 +444,6 @@ repositories:
     files:
       .github/workflows/crawler.yml: gh-actions/data/crawler.yml
       .github/workflows/deploy.yml: gh-actions/data/deploy.yml
-      Gemfile.deploy: gh-actions/data/Gemfile.deploy
       .github/workflows/keep-alive.yml: gh-actions/master/keep-alive.yml
   relaton-data-gost:
     remote: ssh://git@github.com/relaton/relaton-data-gost
@@ -477,7 +451,6 @@ repositories:
     files:
       .github/workflows/crawler.yml: gh-actions/data/crawler.yml
       .github/workflows/deploy.yml: gh-actions/data/deploy.yml
-      Gemfile.deploy: gh-actions/data/Gemfile.deploy
       .github/workflows/keep-alive.yml: gh-actions/master/keep-alive.yml
   relaton-data-jcgm:
     remote: ssh://git@github.com/relaton/relaton-data-jcgm
@@ -485,7 +458,6 @@ repositories:
     files:
       .github/workflows/crawler.yml: gh-actions/data/crawler.yml
       .github/workflows/deploy.yml: gh-actions/data/deploy.yml
-      Gemfile.deploy: gh-actions/data/Gemfile.deploy
       .github/workflows/keep-alive.yml: gh-actions/master/keep-alive.yml
   relaton-data-oiml:
     remote: ssh://git@github.com/relaton/relaton-data-oiml
@@ -493,7 +465,6 @@ repositories:
     files:
       .github/workflows/crawler.yml: gh-actions/data/crawler.yml
       .github/workflows/deploy.yml: gh-actions/data/deploy.yml
-      Gemfile.deploy: gh-actions/data/Gemfile.deploy
       .github/workflows/keep-alive.yml: gh-actions/master/keep-alive.yml
   # models
   relaton-model-3gpp:
