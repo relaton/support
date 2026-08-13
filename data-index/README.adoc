@@ -44,7 +44,7 @@ change involved.
 
 `_config.yml` is unique per repo and is *repo-owned* — exactly like
 `relaton-data-oasis`, `-w3c`, and `-ids` already keep theirs. Cimas manages only
-the byte-identical plumbing (`deploy.yml`, `Gemfile.deploy`). This generator is the
+the byte-identical plumbing (`deploy.yml`). This generator is the
 single place the per-repo configs are produced; the output is committed into each
 data repo, where a maintainer may further tune it without a central clobber.
 
@@ -228,10 +228,13 @@ The theme plugin now reconstructs a `_type:`-tagged Hash `:id` via
 `relaton__jekyll-theme-relaton-data-index__render-pubid-structured-ids.md`, landed) and
 degrades to a compact fallback string if that gem is missing. For real DocIDs the pubid
 gem must therefore be in the *build* bundle — which is why the deploy bundle
-(`cimas-config/gh-actions/data/Gemfile.deploy`) `eval_gemfile`s each data repo's own
+(`cimas-config/gh-actions/data/Gemfile.deploy`) `eval_gemfile`d each data repo's own
 Gemfile to layer Jekyll on top of that repo's relaton + pubid pins. With both in one
-bundle, the tier-C flavors below render citable DocIDs rather than a fallback like
-`2010 IEC IEC`.
+bundle, the tier-C flavors below rendered citable DocIDs rather than a fallback like
+`2010 IEC IEC`. That bundle has since been deleted along with its 29 Cimas
+mappings: `relaton index` resolves its own dependencies (`source: gem` installs
+relaton-cli, `source: git` writes `$RUNNER_TEMP/Gemfile.index`), and it reads the
+data YAML directly without calling pubid at all.
 ====
 
 [cols="1,3",options="header"]
@@ -303,7 +306,7 @@ gh api -X POST repos/relaton/relaton-data-<repo>/pages \
 cp data-index/generated/<repo>_config.yml <data repo>/_config.yml
 # (or regenerate on the fly: bin/gen-data-index-config <repo>)
 ----
-. *Roll the Cimas plumbing* (`deploy.yml`, `Gemfile.deploy`) to every data repo —
+. *Roll the Cimas plumbing* (`deploy.yml`) to every data repo —
   from the support repo root, per `../README.adoc`:
 +
 [source,sh]
@@ -322,12 +325,14 @@ bin/check-data-pages              # exits non-zero until every repo is 200
 The site should list DocID -> file with working pagination and a citable DocID
 per row.
 
-TIP: Start with Tier A (renders cleanly today); Tier B/C need the flavor pubid gem
-in the build bundle, which `cimas-config/gh-actions/data/Gemfile.deploy` already
-provides (it `eval_gemfile`s each repo's own Gemfile). See "Rendering readiness".
+TIP: Start with Tier A (renders cleanly today); Tier B/C needed the flavor pubid
+gem in the build bundle, which the now-deleted
+`cimas-config/gh-actions/data/Gemfile.deploy` supplied by `eval_gemfile`ing each
+repo's own Gemfile. See "Rendering readiness".
 
 NOTE: `configs.yml` and `../cimas-config/cimas.yml` must agree on every repo's
-`branch:` and both must map `deploy.yml` + `Gemfile.deploy`; a drift silently
+`branch:` and both must map `deploy.yml` (and, since the Jekyll build was
+retired, must map no `Gemfile.deploy`); a drift silently
 skips the publish (the deploy job only runs on the repo's default branch).
 `spec/cimas_data_pages_spec.rb` enforces this — run `bundle exec rspec` after
 editing either file.
