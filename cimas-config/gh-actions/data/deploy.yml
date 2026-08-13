@@ -4,9 +4,9 @@ name: Deploy
 # push.
 #
 # Dropped `pull_request`: publication is gated on the repo's default branch
-# inside data-deploy.yml, so a PR ran the whole build — npm ci and the Vue
-# compile under `source: git`, then a full corpus parse and a Pages artifact
-# upload, 10-15 minutes on a large flavor — and then skipped the deploy job.
+# inside data-deploy.yml, so a PR ran the whole build — npm ci, the Vue compile
+# and a full corpus parse, then a Pages artifact upload, minutes of it — and then
+# skipped the deploy job.
 #
 # Dropped `push`: it never fired on crawler commits anyway (crawler.yml pushes
 # with the default actions/checkout GITHUB_TOKEN, and GitHub deliberately raises
@@ -36,8 +36,8 @@ on:
   # `types: [completed]` fires on every crawler run regardless of whether the
   # "Push data" step committed. What this covers is a crawler that never ran or
   # was disabled, and picking up upstream relaton/relaton changes that alter the
-  # generated index. Cost: a second full build per day (~10 min under
-  # `source: git`, which compiles the frontend); drop to weekly if that bites.
+  # generated index. Cost: a second full build per day (~3 min on the largest
+  # flavor, which includes compiling the frontend); drop to weekly if it bites.
   #
   # Set clear of the crawler's observed run window rather than one hour after
   # its nominal cron — see the note on workflow_run above.
@@ -61,8 +61,8 @@ jobs:
     # Pinned by spec/data_deploy_caller_template_spec.rb and, for every synced
     # template, by spec/cimas_data_pages_spec.rb.
     #
-    # The known exception is the temporary `source: git` pin several repos carry
-    # while relaton-cli ships no `index` command. That one is deliberately NOT
-    # centralised: losing it fails loudly with `Could not find command "index"`,
-    # so a sync that wipes it cannot go unnoticed.
+    # Twelve repos still carry a `source: git` pin from when the shared workflow
+    # defaulted to `gem`. That default is now `git`, so those pins set the value
+    # they would inherit anyway and a sync dropping them is the cleanup, not the
+    # damage. Do not re-add one here.
     uses: relaton/support/.github/workflows/data-deploy.yml@main
