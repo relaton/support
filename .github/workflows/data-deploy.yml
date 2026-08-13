@@ -141,9 +141,10 @@ permissions:
 # `queue: single` a *pending* run is cancelled the moment a third joins its
 # group, so anything parked in the deployment queue that will never deploy can
 # drop a queued run carrying freshly crawled data — the staleness this
-# workflow's triggers exist to avoid. Pull requests, tag pushes and pushes to a
-# non-default branch all build for ~10 minutes and then skip `deploy`, so they
-# are keyed by ref into groups of their own.
+# workflow's triggers exist to avoid. Any run that builds for ~10 minutes and
+# then skips `deploy` — a `workflow_dispatch` from a non-default branch, or a
+# pull request or tag push from a caller that still triggers on them, which the
+# Cimas template no longer does — is keyed by ref into a group of its own.
 #
 # The discriminator is the deploy job's own gate, so the two cannot drift.
 concurrency:

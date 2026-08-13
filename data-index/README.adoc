@@ -66,13 +66,57 @@ was committed, so the cron is not there for quiet days. It covers a crawler that
 never ran or was disabled, and upstream `relaton/relaton` changes that alter the
 generated index — at the price of a second full build per day.
 
+Those are the only two automatic triggers, plus `workflow_dispatch` for a human.
+Neither template builds on `push` or `pull_request` any more. A PR deploy ran the
+whole build — `npm ci` and the Vue compile under `source: git`, a full corpus
+parse, a Pages artifact upload — and then skipped the deploy job, because
+publication is gated on the repo's default branch; and a PR crawl fetched an
+entire corpus and discarded it, since the shared `crawler.yml` gates its "Push
+data" step on `github.event_name != 'pull_request'`. `push` bought little
+either: on Deploy it never fired on crawler commits at all (`GITHUB_TOKEN`
+pushes raise no events), and on Crawler it only re-ran what the cron runs anyway.
+The trigger sets are pinned by `spec/data_deploy_caller_template_spec.rb`.
+
+Two costs to know about. A hand-committed data or config fix no longer
+republishes immediately — it waits for the `0 18 * * *` cron, or a
+`workflow_dispatch`. And since each data repo carries its own `crawler.rb`, the
+PR run was the only non-mutating way to exercise a change to it: a dispatched
+crawl is not covered by the `pull_request` gate above, so it commits and pushes
+its crawled corpus to whichever branch it runs on.
+
+[CAUTION]
+====
+A required status check that can no longer be triggered leaves every future PR
+permanently pending, so a repo listing `Deploy` or `Crawler` as required would
+break on this change. Checked at the time of writing: *no* `relaton-data-*` repo
+has branch protection configured at all, so there is nothing to unpick. Re-check
+before a much later sync — `gh api` writes its error body to stdout on a 404, so
+filter after it rather than with `--jq`:
+
+[source,sh]
+----
+for r in $(gh repo list relaton --limit 200 --json name -q '.[].name' | grep '^relaton-data-'); do
+  b=$(gh repo view "relaton/$r" --json defaultBranchRef -q .defaultBranchRef.name)
+  gh api "repos/relaton/$r/branches/$b/protection" 2>/dev/null |
+    jq -e -r --arg r "$r" \
+      '.required_status_checks.contexts // [] | select(length > 0) | "\($r): \(.)"'
+done
+----
+
+What PR-time validation remains is thinner than it looks: `check_data.yml` keeps
+its own `push`/`pull_request` triggers, but `cimas.yml` maps it into only 3 of
+the 29 repos (bipm, iho, iso). For the other 26, a PR touching `data/**` now runs
+no CI at all.
+====
+
 Two things a caller deliberately does *not* declare, because `data-deploy.yml`
 declares them centrally for the whole fleet: the `if:` that skips a `workflow_run`
 whose crawler failed, and the Pages `concurrency` group. That group is keyed on
 the deploy job's own default-branch gate, so only runs that can actually publish
 share a queue — GitHub keeps just one *pending* run per group and cancels it when
-the next arrives, so a tag push or PR build sharing the queue could otherwise
-drop a run carrying fresh data.
+the next arrives, so a build that cannot publish (a `workflow_dispatch` from a
+non-default branch, or a caller whose triggers have drifted) could otherwise drop
+a run carrying fresh data.
 
 [NOTE]
 ====

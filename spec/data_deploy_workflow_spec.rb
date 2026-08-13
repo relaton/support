@@ -241,10 +241,11 @@ RSpec.describe ".github/workflows/data-deploy.yml" do
 
     it "queues only the runs that can actually publish" do
       # Under GitHub's default `queue: single` a pending run is cancelled the
-      # moment a third joins its group. Pull requests, tag pushes and pushes to
-      # a non-default branch all build and then skip `deploy`, so parking them
-      # in the deployment queue would let them drop a pending run carrying
-      # freshly crawled data. Keying on the deploy job's *own* gate is what
+      # moment a third joins its group. A run that builds and then skips
+      # `deploy` — a dispatch from a non-default branch, or a pull request or
+      # tag push from a caller that still triggers on them — would, parked in
+      # the deployment queue, drop a pending run carrying freshly crawled
+      # data. Keying on the deploy job's *own* gate is what
       # keeps the split honest — assert they are literally the same expression,
       # so narrowing one and forgetting the other fails here.
       expect(concurrency.fetch("group")).to include(deploy_gate)
