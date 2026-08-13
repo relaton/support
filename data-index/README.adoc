@@ -44,8 +44,8 @@ change involved.
 
 `_config.yml` is unique per repo and is *repo-owned* — exactly like
 `relaton-data-oasis`, `-w3c`, and `-ids` already keep theirs. Cimas manages only
-the byte-identical plumbing (`deploy.yml`). This generator is the
-single place the per-repo configs are produced; the output is committed into each
+the byte-identical plumbing (`deploy.yml`). This generator is the single place
+the per-repo configs are produced; the output is committed into each
 data repo, where a maintainer may further tune it without a central clobber.
 
 == When the site rebuilds
@@ -68,9 +68,9 @@ generated index — at the price of a second full build per day.
 
 Those are the only two automatic triggers, plus `workflow_dispatch` for a human.
 Neither template builds on `push` or `pull_request` any more. A PR deploy ran the
-whole build — `npm ci` and the Vue compile under `source: git`, a full corpus
-parse, a Pages artifact upload — and then skipped the deploy job, because
-publication is gated on the repo's default branch; and a PR crawl fetched an
+whole build — `npm ci`, the Vue compile, a full corpus parse and a Pages
+artifact upload — and then skipped the deploy job, because publication is gated
+on the repo's default branch; and a PR crawl fetched an
 entire corpus and discarded it, since the shared `crawler.yml` gates its "Push
 data" step on `github.event_name != 'pull_request'`. `push` bought little
 either: on Deploy it never fired on crawler commits at all (`GITHUB_TOKEN`
@@ -133,17 +133,17 @@ carries no `with:` block at all and is safe to sync — pinned by
 `spec/data_deploy_caller_template_spec.rb`, and generalised to every synced
 template by `spec/cimas_data_pages_spec.rb`.
 
-What a sync *does* still clobber is the temporary `source: git` pin that callers
-carry while no released relaton-cli has the `index` command. That one is
-deliberately left in the caller: losing it fails loudly with
-`Could not find command "index"`, whereas lost branding failed silently.
-Re-apply those pins after a sync, or hold those repos back, until relaton-cli
-ships `index` and they can all be deleted.
+A sync no longer clobbers anything that matters. Twelve callers still carry a
+`with: {source: git}` pin from when the shared workflow defaulted to `gem`; that
+default is now `git` (see "Where relaton-cli comes from" below), so those pins
+set the value they would inherit anyway. A sync that *removes* them is the
+cleanup, not the damage — which is the last thing that made syncing `deploy.yml`
+dangerous.
 
 Some of those callers also still pass branding inputs that are now redundant,
 because `configs.yml` resolves the same values — verified equal repo by repo at
-the time of writing. Those lines can be dropped independently of the `source`
-pin. To re-check the current fleet rather than trusting a list that will drift:
+the time of writing. To re-check the current fleet rather than trusting a list
+that will drift:
 
 [source,sh]
 ----
@@ -185,10 +185,10 @@ _site/detail-NNNN.json      the rich detail fields, 500/shard, fetched on open
 Removing the input here had to land *before* relaton-cli's change, and it cannot
 be reverted piecemeal:
 
-* 12 of the 32 `relaton-data-*` callers pass `source: git`, building relaton-cli
-  from `relaton/relaton@main` — for those there is no gem release between the two
-  repos to act as a gate, and they pick the change up on their next run. The
-  other 20 are on the default `source: gem` and are gated on a release.
+* Every caller builds relaton-cli from `relaton/relaton@main` — 12 of the 14 live
+  callers pin `source: git` themselves, and the rest inherit it from the default
+  (see "Where relaton-cli comes from" below) — so no gem release gates anything,
+  and each picks upstream changes up on its next run.
 * A stale `--mode` fails in a way that reads as something else. Thor's legacy
   default prints a usage error and exits *0*, so the build step goes green
   having written no `_site` at all, and the run then dies at
@@ -208,6 +208,50 @@ Two consequences of the fetch-based page worth knowing: it must be served over
 empty index; and the shards must not be pre-compressed in the deploy — Pages
 gzips them already, and a stored `.json.gz` would be served as
 `application/gzip` with no `Content-Encoding` and never inflated.
+
+== Where relaton-cli comes from (`source`)
+
+`data-deploy.yml`'s `source` input picks where the `relaton-cli` that runs
+`relaton index` comes from. It defaults to **`git`**:
+
+`git` (default):: check out `relaton/relaton` at `relaton-ref` (`main`), compile
+  the Vue frontend with `npm ci && npm run build` (relaton-cli's `frontend/dist`
+  is gitignored, so it is not in the checkout), resolve the gems through a
+  generated `$RUNNER_TEMP/Gemfile.index`, and run `bundle exec relaton index`.
+`gem`:: `gem install relaton-cli` and run `relaton index`. Ruby only — the gem
+  ships the precompiled bundle.
+
+The default is `git` for two reasons. No released relaton-cli has the `index`
+command (latest stable 2.1.2, 2026-05-29; `3.0.0.pre.alpha.1` predates it), so a
+`gem` build cannot work — it exits 0 printing `Could not find command "index"`,
+writes no `_site`, and the run dies at `actions/upload-pages-artifact`. And
+`relaton index` is being iterated on too quickly to cut a release per change.
+
+**Flip back to `gem` once relaton v3 is stable and released.** It is one line in
+`data-deploy.yml`, pinned by `spec/data_deploy_workflow_spec.rb`, which also
+asserts both paths still exist so the revert stays one line. One caveat: the
+twelve callers that still pin `source: git` themselves keep building from git
+until a `cimas sync` drops those pins. A release is also what ends the `git`
+path's cost: Node, `npm ci` and a frontend compile on every build.
+
+`relaton-ref` deliberately stays `main` rather than a known-good SHA (contra
+`relaton__support__data-deploy-trigger-and-concurrency.md` §3): bumping a pin per
+upstream change is the same treadmill as releasing. A broken upstream is not a
+broken site — `deploy` runs only when the build succeeds, so each repo keeps
+serving its last successful deployment; you get stale sites and red runs. The
+input remains available for a repo that needs to freeze.
+
+Cost, measured on `relaton-data-3gpp` (88,464 documents) from its 2026-08-12
+Deploy run — the "~10 minute build" figure that earlier notes carried was wrong
+by roughly 4×:
+
+----
+npm ci + Vue compile + bundle       61 s
+relaton index (88,464 documents)    80 s
+whole run, checkout -> deployed   ~3 min 10 s
+----
+
+Small flavors (bipm, iana) finish in under two minutes.
 
 == The pubid rule
 

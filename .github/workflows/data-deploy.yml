@@ -50,11 +50,15 @@ name: Deploy
 # behind a ~110 KB index.html — so nothing is left to choose and the flag is
 # gone rather than deprecated.
 #
-# This workflow must stop passing `--mode` BEFORE that lands, for the 12 of 32
-# relaton-data-* callers that pass `source: git` and therefore build relaton-cli
-# from relaton/relaton@main: they pick the removal up on their next run, with no
-# release to gate it. The other 20 are on the default `source: gem` and are gated
-# on a relaton-cli release.
+# This workflow had to stop passing `--mode` BEFORE that lands. Every caller
+# builds relaton-cli from relaton/relaton@main — 12 of the 14 live callers pin
+# `source: git` themselves and the rest inherit it from the default below — so
+# upstream changes arrive on the next run with no release anywhere to gate them.
+# That cuts both ways: an upstream break reaches every caller at once, and the
+# sharding change will too, with no per-repo edit.
+#
+# (14 of the 32 relaton-data-* repos have a caller at all; the rest are the
+# unfinished Cimas rollout, tracked in data-index/README.adoc.)
 #
 # The input cannot come back on its own either: a caller `with:` naming an input
 # the called workflow does not declare fails the run immediately with "Invalid
@@ -63,19 +67,43 @@ name: Deploy
 # passes one.
 #
 # Two source modes (input `source`):
-#   * gem (default) — install the released relaton-cli gem. Ruby only; the gem
-#     ships the precompiled frontend bundle.
-#   * git           — build relaton + relaton-cli straight from GitHub (with
+#   * git (default) — build relaton + relaton-cli straight from GitHub (with
 #     pubid from git main, which relaton tracks). Compiles the frontend on the
-#     fly, so this mode also needs Node. Use it to pilot before a gem release.
+#     fly, so this mode also needs Node. Measured on relaton-data-3gpp (88,464
+#     documents): 61 s to compile the frontend and resolve the bundle, 80 s for
+#     `relaton index`, ~3 min 10 s for the whole run; small flavors finish in
+#     under two minutes.
+#   * gem           — install the released relaton-cli gem. Ruby only; the gem
+#     ships the precompiled frontend bundle. Unusable until a release carries
+#     the `index` command — see the note on the input below.
 
 on:
   workflow_call:
     inputs:
+      # Defaults to `git` because no released relaton-cli has the `index`
+      # command — the latest stable is 2.1.2 (2026-05-29) and even
+      # 3.0.0.pre.alpha.1 predates it — so a `gem` build cannot work: `relaton
+      # index` exits 0 printing `Could not find command "index"`, nothing writes
+      # _site, and the run dies at actions/upload-pages-artifact. It also lets
+      # `relaton index` be iterated on without cutting a release per change.
+      #
+      # FLIP BACK TO "gem" once relaton v3 is stable and released. Here that is
+      # this one line — the gem path is kept, not pruned, and pinned by
+      # spec/data_deploy_workflow_spec.rb — but the twelve callers that still pin
+      # `source: git` themselves keep building from git until a `cimas sync`
+      # drops their pins. A release also ends the git path's cost: Node,
+      # `npm ci` and a frontend compile on every build.
+      #
+      # `relaton-ref` deliberately stays `main` rather than a known-good SHA
+      # (contra the trigger/concurrency hand-off's §3): a bump-per-change here is
+      # the same treadmill as a release. A broken upstream is not a broken site —
+      # `deploy` only runs when the build succeeds, so each repo keeps serving its
+      # last successful deployment. The input stays available for a repo that
+      # needs to freeze.
       source:
         description: "Where to get relaton-cli: 'gem' (released) or 'git' (build from GitHub)"
         required: false
-        default: "gem"
+        default: "git"
         type: string
       # The branding trio. Normally unset: `Resolve branding` below reads these
       # per flavor from relaton/support's data-index/configs.yml. Setting one
@@ -105,8 +133,10 @@ on:
         required: false
         default: "data"
         type: string
+      # Only consulted on the `gem` path, which is no longer the default: setting
+      # this alone now does nothing. Pass `source: gem` with it.
       relaton-cli-version:
-        description: "gem source: relaton-cli version to install (default: latest; e.g. add to pin a prerelease)"
+        description: "gem source (needs source: gem): relaton-cli version to install (default: latest)"
         required: false
         default: ""
         type: string
@@ -125,10 +155,9 @@ permissions:
   contents: read
 
 # Serialize Pages deployments per calling repo. Runs overlap easily — the caller
-# template fires on `workflow_run` *and* a fallback cron, and a `source: git`
-# build takes ~10 minutes — and two concurrent actions/deploy-pages runs make the
-# loser fail with a concurrent-deployment error. Mirrors GitHub's own Pages
-# starter workflow.
+# template fires on `workflow_run` *and* a fallback cron, and a build runs for
+# minutes — and two concurrent actions/deploy-pages runs make the loser fail with
+# a concurrent-deployment error. Mirrors GitHub's own Pages starter workflow.
 #
 # Declared at the top level of this *called* workflow, which is where GitHub
 # documents concurrency for a reusable workflow to live: `jobs.<id>.concurrency`
@@ -141,8 +170,8 @@ permissions:
 # `queue: single` a *pending* run is cancelled the moment a third joins its
 # group, so anything parked in the deployment queue that will never deploy can
 # drop a queued run carrying freshly crawled data — the staleness this
-# workflow's triggers exist to avoid. Any run that builds for ~10 minutes and
-# then skips `deploy` — a `workflow_dispatch` from a non-default branch, or a
+# workflow's triggers exist to avoid. Any run that builds and then skips
+# `deploy` — a `workflow_dispatch` from a non-default branch, or a
 # pull request or tag push from a caller that still triggers on them, which the
 # Cimas template no longer does — is keyed by ref into a group of its own.
 #
@@ -166,6 +195,20 @@ jobs:
     if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     steps:
+      # Both source paths are `if:`-gated, so an unrecognised value skips all of
+      # them: nothing installs relaton-cli, nothing writes _site, and the run
+      # dies at actions/upload-pages-artifact blaming the upload for a bad input.
+      # First step in the job — it costs nothing and needs no checkout.
+      - name: Validate source input
+        if: inputs.source != 'gem' && inputs.source != 'git'
+        # By env, not `${{ }}`: the value is caller-supplied and would otherwise
+        # be substituted as raw shell text — same rule as the build steps below.
+        env:
+          SOURCE: ${{ inputs.source }}
+        run: |
+          echo "::error::Unknown source '$SOURCE' (expected 'gem' or 'git')"
+          exit 1
+
       - uses: actions/checkout@v4 # the data repo (has ./data)
 
       # Must come AFTER the checkout above: a checkout into the workspace root
@@ -205,8 +248,8 @@ jobs:
 
       # Ahead of the source-specific steps on purpose: the git-source build
       # exports BUNDLE_GEMFILE to $GITHUB_ENV for every later step, and a
-      # branding failure should surface before a ~10-minute frontend compile,
-      # not after it.
+      # branding failure should surface before the frontend compile and the
+      # corpus parse, not after them.
       - name: Resolve branding
         id: branding
         # The inputs travel by env for the same reason the build steps below do,
@@ -222,7 +265,7 @@ jobs:
             --description "$DESCRIPTION" \
             >> "$GITHUB_OUTPUT"
 
-      # ---- gem source (default): install the released gem, Ruby only ----------
+      # ---- gem source: install the released gem, Ruby only --------------------
       - name: Install relaton-cli (released gem)
         if: inputs.source == 'gem'
         run: |

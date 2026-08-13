@@ -93,7 +93,7 @@ RSpec.describe "cimas-config/gh-actions/data/deploy.yml" do
       # A `pull_request` deploy ran the whole build — npm ci and the Vue compile
       # under `source: git`, then a full corpus parse and a Pages artifact
       # upload — and then skipped `deploy`, because publication is gated on the
-      # repo's default branch. 10-15 minutes per PR for output nobody can see.
+      # repo's default branch. Minutes per PR for output nobody can see.
       #
       # `workflow_run` stays: it is not push-driven, and it is the only thing
       # that makes publication track the crawl rather than a cron guessed to
@@ -146,9 +146,12 @@ RSpec.describe "cimas-config/gh-actions/data/deploy.yml" do
       # this file into 29 repos as a whole-file copy, so anything in a `with:`
       # here is either wrong for the other 28 or — once a repo hand-edits it —
       # silently reverted by the next `cimas sync`. Branding failed silently (the
-      # page just loses its favicon); `source: git` fails loudly with
-      # `Could not find command "index"`, which is why only branding moved and
-      # `source` is still a caller input.
+      # page just loses its favicon), which is why it moved to configs.yml.
+      #
+      # `source: git` used to be the one deliberate exception, because losing it
+      # failed loudly with `Could not find command "index"`. It no longer needs
+      # to be anywhere: `source` defaults to `git` in the shared workflow, so the
+      # twelve callers still carrying the pin can lose it to a sync harmlessly.
       expect(deploy_job).not_to have_key("with")
     end
   end

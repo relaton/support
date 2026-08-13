@@ -83,6 +83,57 @@ RSpec.describe ".github/workflows/data-deploy.yml" do
     end
   end
 
+  describe "the source input" do
+    it "defaults to building relaton-cli from GitHub" do
+      # No released relaton-cli has the `index` command — the latest stable is
+      # 2.1.2 and even 3.0.0.pre.alpha.1 predates it — so a `gem` default is a
+      # guaranteed failure: `relaton index` exits 0 printing `Could not find
+      # command "index"`, nothing writes _site, and the run dies at
+      # actions/upload-pages-artifact. relaton-data-ids and -oasis failed exactly
+      # that way daily until this default changed.
+      #
+      # It is also what lets `relaton index` be iterated on without cutting a
+      # release per change. Flip back to "gem" once relaton v3 is stable and
+      # released; that is a one-line change, which is why the gem path below is
+      # kept rather than pruned.
+      expect(inputs.fetch("source"))
+        .to include("required" => false, "default" => "git", "type" => "string")
+    end
+
+    it "keeps both source paths available for the eventual flip back" do
+      # Every step that installs or builds relaton-cli stays gated on the input
+      # rather than hardcoded to the current default, so returning to `gem` is
+      # the one-line change the input's comment promises. Asserted by step name,
+      # not by count: adding a gated step (a cache, the guard below) should not
+      # fail this, whereas losing either path should.
+      gated = steps.select { |s| s["if"].to_s.include?("inputs.source") }
+                   .group_by { |s| s["if"] }
+                   .transform_values { |group| group.map { |s| s["name"].to_s } }
+
+      expect(gated.fetch("inputs.source == 'gem'"))
+        .to include(a_string_matching(/^Install relaton-cli/), a_string_matching(/^Build index/))
+      expect(gated.fetch("inputs.source == 'git'"))
+        .to include(a_string_matching(/^Checkout relaton /), a_string_matching(/^Build frontend/),
+                    a_string_matching(/^Build index/))
+    end
+
+    it "fails fast on a source value neither path handles" do
+      # Both paths are `if:`-gated, so an unrecognised value (a typo, "Git", a
+      # stray space) silently skips every one of them: nothing installs
+      # relaton-cli, nothing writes _site, and the run dies at
+      # actions/upload-pages-artifact with `tar: _site/: Cannot open` — a red run
+      # blaming the upload for a bad input. Same misattribution a stale --mode
+      # produced, and worth a guard now that `source` has a non-obvious default.
+      guard = steps.find { |s| s["name"].to_s.start_with?("Validate source") }
+
+      expect(guard).not_to be_nil
+      expect(guard.fetch("if")).to eq("inputs.source != 'gem' && inputs.source != 'git'")
+      # Before anything expensive, and before the branding resolve too — it costs
+      # nothing and there is no reason to check out relaton/support first.
+      expect(index_steps.map { |s| step_index.call(s) }.min).to be > step_index.call(guard)
+    end
+  end
+
   it "builds the index in both source modes" do
     expect(index_steps.map { |s| s["if"] })
       .to contain_exactly("inputs.source == 'gem'", "inputs.source == 'git'")
@@ -167,8 +218,8 @@ RSpec.describe ".github/workflows/data-deploy.yml" do
 
     it "resolves branding before the expensive source-specific build" do
       # The git-source build exports BUNDLE_GEMFILE to $GITHUB_ENV for every
-      # later step, and a broken configs.yml should not cost a ~10-minute
-      # frontend compile before it surfaces.
+      # later step, and a broken configs.yml should not cost a frontend compile
+      # and a full corpus parse before it surfaces.
       expect(branding_step).not_to be_nil
       index_steps.each do |step|
         expect(step_index.call(branding_step)).to be < step_index.call(step)
@@ -225,8 +276,8 @@ RSpec.describe ".github/workflows/data-deploy.yml" do
     it "is declared, so two Pages deployments cannot collide" do
       # Both runs reach actions/deploy-pages@v4 and the loser fails with a
       # concurrent-deployment error. Overlap is easy: the caller template fires
-      # on `workflow_run` *and* a fallback cron, and a `source: git` build runs
-      # for ~10 minutes. Declared here rather than per caller because GitHub
+      # on `workflow_run` *and* a fallback cron, and a build runs for minutes
+      # (~3 on the largest flavor). Declared here rather than per caller because GitHub
       # documents the *called* workflow's top level as where concurrency for a
       # reusable workflow belongs — `jobs.<id>.concurrency` on the calling job
       # "will not behave as expected".
