@@ -52,6 +52,37 @@ RSpec.describe ".github/workflows/data-deploy.yml" do
     end
   end
 
+  describe "the removed mode input" do
+    # `relaton index` used to take `--mode embedded|dom|static-json`, trading the
+    # crawler-indexable DOM against page weight. relaton-cli now always emits
+    # sharded JSON (`search-NNNN.json` + `detail-NNNN.json` behind a ~110 KB
+    # index.html) and the flag is gone, so there is nothing left to choose.
+    it "declares no mode input" do
+      # Not merely unused: a caller passing an input the called workflow does not
+      # declare fails the run with "Invalid input, 'mode' is not defined in the
+      # referenced workflow", so this and the callers have to move together. No
+      # relaton-data-* caller passes one today.
+      expect(inputs).not_to have_key("mode")
+    end
+
+    it "passes no --mode to relaton index" do
+      # Why a leftover flag is worse than an ordinary error: Thor's legacy
+      # default prints a usage error and exits 0, so the build step goes GREEN
+      # having written no _site at all, and the run then dies at
+      # actions/upload-pages-artifact with `tar: _site/: Cannot open: No such
+      # file or directory` — red, but pointing at the wrong step entirely.
+      # (relaton-data-ids shows exactly that shape today for a different reason:
+      # its gem-source build has no `index` command at all.) The upstream change
+      # adds `Command.exit_on_failure?` so it will exit 1 where the fault is —
+      # not merged yet, and no reason to leave the flag here either way.
+      index_steps.each { |step| expect(step.fetch("run")).not_to include("--mode") }
+    end
+
+    it "keeps no MODE in the build environment" do
+      index_steps.each { |step| expect(step.fetch("env").keys).not_to include("MODE") }
+    end
+  end
+
   it "builds the index in both source modes" do
     expect(index_steps.map { |s| s["if"] })
       .to contain_exactly("inputs.source == 'gem'", "inputs.source == 'git'")

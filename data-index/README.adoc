@@ -111,6 +111,60 @@ done
 ----
 ====
 
+== How the index is delivered (there is no `mode`)
+
+`data-deploy.yml` declares no `mode` input and passes no `--mode`. There is no
+per-repo or fleet-wide delivery setting left to choose.
+
+It used to be. `relaton index` took `--mode embedded|dom|static-json`, which
+traded a crawler-indexable DOM against page weight, and that choice mattered
+because the entire corpus went into *one* page: `relaton-data-3gpp` serves a
+151,688,883-byte `index.html`, and `relaton-data-ids` would produce ~290 MB.
+Compression is not what made those unusable — GitHub Pages gzips HTML, so 3gpp's
+page is only ~6.4 MB on the wire — the browser still parses the full text and
+builds a DOM node per document.
+
+relaton-cli now always emits a sharded site, which fixes the parse and heap cost
+that compression could not:
+
+----
+_site/index.html            ~110 KB regardless of corpus size
+_site/search-NNNN.json      summary records, 5000/shard, loaded progressively
+_site/detail-NNNN.json      the rich detail fields, 500/shard, fetched on open
+----
+
+`search.json` is no longer written, and `--shard-size`, `--detail-shard-size` and
+`--[no-]detail` all have working defaults, so this workflow passes none of them.
+
+[IMPORTANT]
+====
+Removing the input here had to land *before* relaton-cli's change, and it cannot
+be reverted piecemeal:
+
+* 12 of the 32 `relaton-data-*` callers pass `source: git`, building relaton-cli
+  from `relaton/relaton@main` — for those there is no gem release between the two
+  repos to act as a gate, and they pick the change up on their next run. The
+  other 20 are on the default `source: gem` and are gated on a release.
+* A stale `--mode` fails in a way that reads as something else. Thor's legacy
+  default prints a usage error and exits *0*, so the build step goes green
+  having written no `_site` at all, and the run then dies at
+  `actions/upload-pages-artifact` with `tar: _site/: Cannot open: No such file or
+  directory` — pointing at the wrong step. relaton-cli's change adds
+  `Command.exit_on_failure?`, which will make it exit 1 where the fault is; that
+  is part of the same unmerged change, not something already in place.
+* The input cannot come back on its own either: a caller `with:` naming an input
+  the called workflow does not declare fails the run with `Invalid input, 'mode'
+  is not defined in the referenced workflow`, so callers and this file have to
+  move together. No `relaton-data-*` caller passes `mode:` today, and
+  `spec/data_deploy_workflow_spec.rb` pins the absence at this end.
+====
+
+Two consequences of the fetch-based page worth knowing: it must be served over
+`http(s)://`, so a local `file://` preview of `_site/index.html` now shows an
+empty index; and the shards must not be pre-compressed in the deploy — Pages
+gzips them already, and a stored `.json.gz` would be served as
+`application/gzip` with no `Content-Encoding` and never inflated.
+
 == The pubid rule
 
 The theme plugin renders a structured index `:id` (a Hash) by instantiating a
