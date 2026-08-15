@@ -31,7 +31,7 @@
 # deploy.yml `with:` block, is where a data repo's Pages branding lives. (There
 # is no per-entry `title` key: the title always derives from `display`.)
 # It has to be: cimas.yml maps `.github/workflows/deploy.yml` as a whole-file
-# copy for 29 repos, so a `with:` block is wiped on the next `cimas sync` and the
+# copy for 30 repos, so a `with:` block is wiped on the next `cimas sync` and the
 # page silently loses its favicon and description.
 
 defaults:
