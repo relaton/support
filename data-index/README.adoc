@@ -33,7 +33,7 @@ change involved.
   `configs.yml` and prints them in `$GITHUB_OUTPUT` form. Run by the "Resolve
   branding" step of `data-deploy.yml`; useful by hand to preview what a repo will
   publish (`bin/index-branding relaton/relaton-data-iana`).
-`generated/`:: The committed snapshot of all 28 rendered `_config.yml` files (one
+`generated/`:: The committed snapshot of all 29 rendered `_config.yml` files (one
   per target repo) — the exact bytes to commit into each data repo. Regenerate with
   `../bin/gen-data-index-config --out data-index/generated`; kept honest by
   `spec/generated_configs_spec.rb`.
@@ -105,7 +105,7 @@ done
 
 What PR-time validation remains is thinner than it looks: `check_data.yml` keeps
 its own `push`/`pull_request` triggers, but `cimas.yml` maps it into only 3 of
-the 29 repos (bipm, iho, iso). For the other 26, a PR touching `data/**` now runs
+the 30 repos (bipm, iho, iso). For the other 27, a PR touching `data/**` now runs
 no CI at all.
 ====
 
@@ -120,7 +120,7 @@ a run carrying fresh data.
 
 [NOTE]
 ====
-Cimas replaces `deploy.yml` wholesale in all 29 mapped repos, so nothing per-repo
+Cimas replaces `deploy.yml` wholesale in all 30 mapped repos, so nothing per-repo
 can live in a caller's `with:` block and survive.
 
 Branding no longer tries to. `title`, `favicon` and `description` come from
@@ -292,12 +292,12 @@ data YAML directly without calling pubid at all.
 | bipm, ecma
 
 | *C — needs the theme fix* (external-pubid `_type` Hash `:id`)
-| adobe, ccsds, cie, easc, etsi, gost, iec, ieee, iho, iso, itu-r, jcgm, jis, nist, oiml, plateau
+| adobe, ccsds, cie, easc, etsi, gost, iec, ieee, iho, iso, itu, itu-r, jcgm, jis, nist, oiml, plateau
 |===
 
 == Status (verified 2026-08-03)
 
-`configs.yml` covers *28 repos*: the 25 rollout targets plus the 3 already-live
+`configs.yml` covers *29 repos*: the 26 rollout targets plus the 3 already-live
 (*ids, oasis, w3c*), folded in so the generator is the single source for every site.
 The 3 live ones carry per-repo `favicon`/`description` overrides (and w3c a
 `pubid_require: relaton/w3c/pubid`); regenerating their `_config.yml` reproduces the
@@ -305,7 +305,7 @@ live site (with `baseurl` corrected from `/main/` to their real default `/v2/`).
 
 Live (200): *relaton-data-ids, -oasis, -w3c* — already rolled out.
 
-Pending (Pages 404): *the other 25 repos in `configs.yml`*. Every one's published index
+Pending (Pages 404): *the other 26 repos in `configs.yml`*. Every one's published index
 (`<baseurl><source>`) already returns 200 — i.e. the data side is ready.
 
 Pages *enablement* state (verified via `gh api repos/relaton/relaton-data-<repo>/pages`):
@@ -313,15 +313,16 @@ Pages *enablement* state (verified via `gh api repos/relaton/relaton-data-<repo>
 * *Already enabled* (`build_type: workflow`, source = default branch, no build
   published yet so the site 404s) — the *20 `v2`-default repos*. These need only
   steps 2–3 below; *skip step 1*.
-* *Not enabled* (Pages API 404) — the *5 `main`-default repos*: *adobe, easc, gost,
-  jcgm, oiml*. These need step 1, which requires *repo admin* (a plain `push`/`repo`
-  token gets HTTP 404 from the Create-Pages endpoint).
+* *Not enabled* (Pages API 404) — the *6 `main`-default repos*: *adobe, easc, gost,
+  itu, jcgm, oiml*. These need step 1, which requires *repo admin* (a plain
+  `push`/`repo` token gets HTTP 404 from the Create-Pages endpoint). *itu* was
+  added after this section's 2026-08-03 sweep and re-checked 2026-08-15.
 
 Re-check current state any time with:
 
 [source,sh]
 ----
-bin/check-data-pages              # site + raw-index for all 28
+bin/check-data-pages              # site + raw-index for all 29
 bin/check-data-pages --site-only  # just the Pages sites (the 404s to fix)
 ----
 

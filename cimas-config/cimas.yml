@@ -278,6 +278,20 @@ repositories:
       .github/workflows/crawler.yml: gh-actions/data/crawler.yml
       .github/workflows/deploy.yml: gh-actions/data/deploy.yml
       .github/workflows/keep-alive.yml: gh-actions/master/keep-alive.yml
+  # The combined ITU-R + ITU-T dataset, which supersedes relaton-data-itu-r as a
+  # corpus (the relaton gem still consumes -itu-r, so both keep a site for now).
+  relaton-data-itu:
+    remote: ssh://git@github.com/relaton/relaton-data-itu
+    branch: main
+    files:
+      # crawler.yml is deliberately NOT mapped. That repo keeps its daily
+      # schedule commented out (relaton-data-itu 866ea8a2) because a run
+      # re-harvests ~16k ITU-T records at ~4 www.itu.int requests each, and a
+      # sync of the shared crawler template would switch the cron back on. Only
+      # the Pages caller is synced here; the caller's `workflow_run` trigger
+      # still fires on the crawls that repo does run.
+      .github/workflows/deploy.yml: gh-actions/data/deploy.yml
+      .github/workflows/keep-alive.yml: gh-actions/master/keep-alive.yml
   relaton-data-ecma:
     remote: ssh://git@github.com/relaton/relaton-data-ecma
     branch: v2
@@ -660,6 +674,7 @@ groups:
     - relaton-data-ecma
     - relaton-data-ietf
     - relaton-data-itu-r
+    - relaton-data-itu
     - relaton-data-bipm
     - relaton-data-iho
     - relaton-data-calconnect

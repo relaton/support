@@ -53,7 +53,7 @@ RSpec.describe DataIndexConfig do
       # relaton.org otherwise. Listed explicitly so adding an override is a
       # deliberate edit here rather than a silent change to a repo's live page.
       default_favicon = config.defaults.fetch("favicon")
-      overridden = %w[iana ids oasis w3c]
+      overridden = %w[iana ids itu oasis w3c]
       config.repos.reject { |e| overridden.include?(e["repo"]) }.each do |e|
         expect(jekyll_index(e["repo"])["favicon"]).to eq(default_favicon)
       end
@@ -127,12 +127,16 @@ RSpec.describe DataIndexConfig do
   end
 
   describe "configs.yml data" do
-    it "covers exactly the 28 repos with no duplicates" do
+    it "covers exactly the 29 repos with no duplicates" do
       repos = config.repos.map { |e| e["repo"] }
-      expect(repos.size).to eq(28)
-      expect(repos.uniq.size).to eq(28)
+      expect(repos.size).to eq(29)
+      expect(repos.uniq.size).to eq(29)
       expect(repos).to include("iso", "ieee", "jis", "adobe", "easc", "gost", "jcgm", "oiml")
       expect(repos).to include("ids", "oasis", "w3c") # already-live, folded in
+      # Both ITU rows: `itu` is the combined ITU-R + ITU-T corpus, `itu-r` the
+      # ITU-R-only repo the relaton gem still consumes. Neither is a typo for
+      # the other, and dropping either silently 404s a site.
+      expect(repos).to include("itu", "itu-r")
       expect(repos).not_to include("sdo", "ietf", "misc")
     end
 
