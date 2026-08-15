@@ -48,7 +48,7 @@ class DataIndexConfig
   # The branding `relaton index` renders into the Pages site — title, favicon and
   # `<meta name="description">` — resolved centrally rather than passed by each
   # caller. cimas.yml maps `.github/workflows/deploy.yml` as a whole-file copy for
-  # 29 repos, so a `with:` block carrying these values is wiped on the next
+  # 30 repos, so a `with:` block carrying these values is wiped on the next
   # `cimas sync` and the site silently loses them.
   #
   # Precedence: an explicit non-blank argument (a caller's workflow input) beats

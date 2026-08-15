@@ -9,22 +9,41 @@ name: Deploy
 # relaton/relaton#83 — and note the shift described below: the output was
 # originally self-contained and crawler-indexable, and is now neither.
 #
-# Callers need no changes — it stays `workflow_call` with no required inputs:
+# Two callers, one build definition. `cimas-config/gh-actions/data/` holds both
+# and Cimas syncs them into every relaton-data-* repo:
+#
+#   deploy.yml       ("Deploy")       workflow_run / cron / dispatch -> publishes
+#   check-index.yml  ("Check index")  pull_request                   -> validates
+#
+# Neither passes an input — it stays `workflow_call` with no required ones:
 #
 #   jobs:
-#     deploy:
+#     <job>:
 #       uses: relaton/support/.github/workflows/data-deploy.yml@main
 #
+# Which of the two a run is, is decided HERE and not by the caller:
+# actions/configure-pages, actions/upload-pages-artifact and the `deploy` job are
+# all gated on the run being able to publish (`github.ref` equal to the repo's
+# default branch), which a pull_request run — ref `refs/pull/N/merge` — never is.
+# So the pre-merge check runs the identical build over the identical corpus and
+# simply stops short of Pages. There is no second build definition to drift, and
+# no `validate-only` input for a caller to forget, get wrong, or lose to a sync.
+#
+# One consequence to know before offering a PR preview: `--base-url` below is
+# built from GITHUB_REF_NAME, which on a pull_request run is `N/merge`, not a
+# branch. The raw-YAML links in a validation build's _site are therefore wrong —
+# harmless only because that _site is never uploaded or published.
+#
 # Callers should publish on the crawler finishing rather than on a cron guessed
-# to land after it — see `cimas-config/gh-actions/data/deploy.yml`, the template
-# Cimas syncs into every relaton-data-* repo. A caller needs only the trigger;
-# both the "skip a failed crawler run" guard and the Pages concurrency group are
-# declared here, so no per-repo copy can drift or forget them.
+# to land after it — see `cimas-config/gh-actions/data/deploy.yml`. A caller
+# needs only its trigger; the "skip a failed crawler run" guard, the
+# stale-branch guard, the Pages gates and the concurrency group are all declared
+# here, so no per-repo copy can drift or forget them.
 #
 # Per-flavor branding — `title`, `favicon` and `description` (relaton/relaton#96)
 # — is resolved HERE, from relaton/support's `data-index/configs.yml`, and not
 # passed by the caller. cimas.yml maps `.github/workflows/deploy.yml` as a
-# whole-file copy for 29 repos, so a `with:` block carrying branding is wiped on
+# whole-file copy for 30 repos, so a `with:` block carrying branding is wiped on
 # the next `cimas sync` and the page silently loses its favicon and description —
 # nothing goes red. Keeping the caller byte-identical fleet-wide is what makes a
 # sync safe; see `data-index/README.adoc`.
@@ -170,12 +189,18 @@ permissions:
 # `queue: single` a *pending* run is cancelled the moment a third joins its
 # group, so anything parked in the deployment queue that will never deploy can
 # drop a queued run carrying freshly crawled data — the staleness this
-# workflow's triggers exist to avoid. Any run that builds and then skips
-# `deploy` — a `workflow_dispatch` from a non-default branch, or a
-# pull request or tag push from a caller that still triggers on them, which the
-# Cimas template no longer does — is keyed by ref into a group of its own.
+# workflow's triggers exist to avoid. Every run that builds and then skips
+# `deploy` is keyed by ref into a group of its own: each `Check index` run (a
+# pull request's ref is `refs/pull/N/merge`, so one group per PR) and a
+# `workflow_dispatch` from a non-default branch. Those runs also skip both Pages
+# steps below, so they never touch a Pages deployment at all.
 #
 # The discriminator is the deploy job's own gate, so the two cannot drift.
+#
+# `cancel-in-progress` stays a flat `false` rather than `${{ !<the gate> }}`.
+# Making it an expression would cancel superseded PR builds — real minutes on
+# the largest flavors — but at the cost of a second, negated spelling of the gate
+# that can drift from this one. Turn that knob only with a spec pinning both.
 concurrency:
   group: >-
     pages-${{ github.repository }}-${{
@@ -192,7 +217,19 @@ jobs:
     # can forget it — a called workflow inherits the caller run's `github`
     # context, event payload included. `deploy` is `needs: build_index_page`, so
     # skipping the build skips the publish with it.
-    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
+    #
+    # Second clause: the caller's `workflow_run.branches` lists every default
+    # branch name in use across the fleet, to stay repo-agnostic. In a repo
+    # carrying more than one of them that leaks — relaton-data-oasis defaults to
+    # v2 and still has a stale `main` — so a crawl on the dormant branch fired
+    # Deploy, and Deploy runs against the default branch, so the publish gate
+    # PASSED and it republished for real. Spurious work rather than corruption
+    # (the build checks out the default branch either way), but a surprising
+    # coupling. The caller's list is only a cheap pre-filter; this is the gate.
+    if: >-
+      github.event_name != 'workflow_run'
+      || (github.event.workflow_run.conclusion == 'success'
+      && github.event.workflow_run.head_branch == github.event.repository.default_branch)
     runs-on: ubuntu-latest
     steps:
       # Both source paths are `if:`-gated, so an unrecognised value skips all of
@@ -347,9 +384,30 @@ jobs:
             --description "$DESCRIPTION" \
             --base-url "https://raw.githubusercontent.com/${GITHUB_REPOSITORY}/${GITHUB_REF_NAME}"
 
-      - uses: actions/configure-pages@v4
+      # Both gated on the deploy job's own publish gate, so a run that cannot
+      # publish does no Pages work: no API call to configure Pages, no artifact
+      # upload. This is what makes the `Check index` caller a validation run
+      # without an input to pass, and it retroactively saves the same wasted
+      # work in any caller still triggering on push or a tag. Same expression,
+      # character for character, as `deploy`'s `if:` and the concurrency
+      # discriminator above — spec/data_deploy_workflow_spec.rb asserts all four
+      # are identical, and that nothing else in this job carries it.
+      #
+      # It also keeps configure-pages away from a token that could not use it: a
+      # fork `pull_request` mints a read-only GITHUB_TOKEN, and configure-pages
+      # calls the Pages API. NOT verified end to end, and do not read it as a
+      # promise that fork PRs work — `deploy` below still declares
+      # `pages: write`, and whether GitHub rejects that at graph composition
+      # (before the job's `if:` skips it) or only on dispatch is not documented
+      # either way. Every relaton-data-* PR today is a same-repo branch. Open one
+      # real fork PR before relying on it.
+      - name: Configure Pages
+        if: github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
+        uses: actions/configure-pages@v4
 
-      - uses: actions/upload-pages-artifact@v3
+      - name: Upload Pages artifact
+        if: github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
+        uses: actions/upload-pages-artifact@v3
 
   deploy:
     # Deploy from the repository's default branch. Hardcoding master/main

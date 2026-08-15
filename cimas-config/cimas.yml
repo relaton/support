@@ -257,10 +257,19 @@ repositories:
   # `branch:` is each repo's real default branch (many moved main/master -> v2);
   # Cimas targets that branch, and the shared data-deploy.yml only publishes Pages
   # from the default branch, so a stale value silently skips the deploy.
+  #
+  # deploy.yml and check-index.yml are two callers of that one workflow —
+  # publish on a finished crawl, validate on a pull request — so they are mapped
+  # together everywhere. A repo with only the first publishes a corpus nothing
+  # checked; one with only the second checks a corpus it never publishes.
+  # `spec/cimas_data_pages_spec.rb` fails on either half alone, in both
+  # directions and for every repo in the `data` group below — including one that
+  # data-index/configs.yml does not cover.
   relaton-data-cie:
     remote: ssh://git@github.com/relaton/relaton-data-cie
     branch: v2
     files:
+      .github/workflows/check-index.yml: gh-actions/data/check-index.yml
       .github/workflows/crawler.yml: gh-actions/data/crawler.yml
       .github/workflows/deploy.yml: gh-actions/data/deploy.yml
       .github/workflows/keep-alive.yml: gh-actions/master/keep-alive.yml
@@ -268,6 +277,7 @@ repositories:
     remote: ssh://git@github.com/relaton/relaton-data-ietf
     branch: master
     files:
+      .github/workflows/check-index.yml: gh-actions/data/check-index.yml
       .github/workflows/crawler.yml: gh-actions/data/crawler.yml
       .github/workflows/deploy.yml: gh-actions/data/deploy.yml
       .github/workflows/keep-alive.yml: gh-actions/master/keep-alive.yml
@@ -275,6 +285,7 @@ repositories:
     remote: ssh://git@github.com/relaton/relaton-data-itu-r
     branch: v2
     files:
+      .github/workflows/check-index.yml: gh-actions/data/check-index.yml
       .github/workflows/crawler.yml: gh-actions/data/crawler.yml
       .github/workflows/deploy.yml: gh-actions/data/deploy.yml
       .github/workflows/keep-alive.yml: gh-actions/master/keep-alive.yml
@@ -284,18 +295,20 @@ repositories:
     remote: ssh://git@github.com/relaton/relaton-data-itu
     branch: main
     files:
+      .github/workflows/check-index.yml: gh-actions/data/check-index.yml
       # crawler.yml is deliberately NOT mapped. That repo keeps its daily
       # schedule commented out (relaton-data-itu 866ea8a2) because a run
       # re-harvests ~16k ITU-T records at ~4 www.itu.int requests each, and a
       # sync of the shared crawler template would switch the cron back on. Only
-      # the Pages caller is synced here; the caller's `workflow_run` trigger
-      # still fires on the crawls that repo does run.
+      # the two Pages callers are synced here; deploy.yml's `workflow_run`
+      # trigger still fires on the crawls that repo does run.
       .github/workflows/deploy.yml: gh-actions/data/deploy.yml
       .github/workflows/keep-alive.yml: gh-actions/master/keep-alive.yml
   relaton-data-ecma:
     remote: ssh://git@github.com/relaton/relaton-data-ecma
     branch: v2
     files:
+      .github/workflows/check-index.yml: gh-actions/data/check-index.yml
       .github/workflows/crawler.yml: gh-actions/data/crawler.yml
       .github/workflows/deploy.yml: gh-actions/data/deploy.yml
       .github/workflows/keep-alive.yml: gh-actions/master/keep-alive.yml
@@ -303,6 +316,7 @@ repositories:
     remote: ssh://git@github.com/relaton/relaton-data-bipm
     branch: v2
     files:
+      .github/workflows/check-index.yml: gh-actions/data/check-index.yml
       .github/workflows/check_data.yml: gh-actions/data/check_data.yml
       .github/workflows/crawler.yml: gh-actions/data/crawler.yml
       .github/workflows/deploy.yml: gh-actions/data/deploy.yml
@@ -311,6 +325,7 @@ repositories:
     remote: ssh://git@github.com/relaton/relaton-data-iho
     branch: v2
     files:
+      .github/workflows/check-index.yml: gh-actions/data/check-index.yml
       .github/workflows/check_data.yml: gh-actions/data/check_data.yml
       .github/workflows/deploy.yml: gh-actions/data/deploy.yml
       .github/workflows/keep-alive.yml: gh-actions/master/keep-alive.yml
@@ -318,6 +333,7 @@ repositories:
     remote: ssh://git@github.com/relaton/relaton-data-calconnect
     branch: v2
     files:
+      .github/workflows/check-index.yml: gh-actions/data/check-index.yml
       .github/workflows/crawler.yml: gh-actions/data/crawler.yml
       .github/workflows/deploy.yml: gh-actions/data/deploy.yml
       .github/workflows/keep-alive.yml: gh-actions/master/keep-alive.yml
@@ -325,6 +341,7 @@ repositories:
     remote: ssh://git@github.com/relaton/relaton-data-nist
     branch: v2
     files:
+      .github/workflows/check-index.yml: gh-actions/data/check-index.yml
       .github/workflows/crawler.yml: gh-actions/data/crawler.yml
       .github/workflows/deploy.yml: gh-actions/data/deploy.yml
       .github/workflows/keep-alive.yml: gh-actions/master/keep-alive.yml
@@ -332,6 +349,7 @@ repositories:
     remote: ssh://git@github.com/relaton/relaton-data-ogc
     branch: v2
     files:
+      .github/workflows/check-index.yml: gh-actions/data/check-index.yml
       .github/workflows/crawler.yml: gh-actions/data/crawler.yml
       .github/workflows/deploy.yml: gh-actions/data/deploy.yml
       .github/workflows/keep-alive.yml: gh-actions/master/keep-alive.yml
@@ -339,6 +357,7 @@ repositories:
     remote: ssh://git@github.com/relaton/relaton-data-iso
     branch: v2
     files:
+      .github/workflows/check-index.yml: gh-actions/data/check-index.yml
       .github/workflows/check_data.yml: gh-actions/data/check_data.yml
       .github/workflows/deploy.yml: gh-actions/data/deploy.yml
       .github/workflows/keep-alive.yml: gh-actions/master/keep-alive.yml
@@ -346,6 +365,7 @@ repositories:
     remote: ssh://git@github.com/relaton/relaton-data-w3c
     branch: v2
     files:
+      .github/workflows/check-index.yml: gh-actions/data/check-index.yml
       .github/workflows/crawler.yml: gh-actions/data/crawler.yml
       .github/workflows/deploy.yml: gh-actions/data/deploy.yml
       .github/workflows/keep-alive.yml: gh-actions/master/keep-alive.yml
@@ -353,6 +373,7 @@ repositories:
     remote: ssh://git@github.com/relaton/relaton-data-iana
     branch: v2
     files:
+      .github/workflows/check-index.yml: gh-actions/data/check-index.yml
       .github/workflows/crawler.yml: gh-actions/data/crawler.yml
       .github/workflows/deploy.yml: gh-actions/data/deploy.yml
       .github/workflows/keep-alive.yml: gh-actions/master/keep-alive.yml
@@ -360,6 +381,7 @@ repositories:
     remote: ssh://git@github.com/relaton/relaton-data-3gpp
     branch: v2
     files:
+      .github/workflows/check-index.yml: gh-actions/data/check-index.yml
       .github/workflows/crawler.yml: gh-actions/data/crawler.yml
       .github/workflows/deploy.yml: gh-actions/data/deploy.yml
       .github/workflows/keep-alive.yml: gh-actions/master/keep-alive.yml
@@ -367,6 +389,7 @@ repositories:
     remote: ssh://git@github.com/relaton/relaton-data-oasis
     branch: v2
     files:
+      .github/workflows/check-index.yml: gh-actions/data/check-index.yml
       .github/workflows/crawler.yml: gh-actions/data/crawler.yml
       .github/workflows/deploy.yml: gh-actions/data/deploy.yml
       .github/workflows/keep-alive.yml: gh-actions/master/keep-alive.yml
@@ -374,6 +397,7 @@ repositories:
     remote: ssh://git@github.com/relaton/relaton-data-ieee
     branch: v2
     files:
+      .github/workflows/check-index.yml: gh-actions/data/check-index.yml
       .github/workflows/crawler.yml: gh-actions/data/crawler.yml
       .github/workflows/deploy.yml: gh-actions/data/deploy.yml
       .github/workflows/keep-alive.yml: gh-actions/master/keep-alive.yml
@@ -381,12 +405,14 @@ repositories:
     remote: ssh://git@github.com/relaton/relaton-data-iec
     branch: v2
     files:
+      .github/workflows/check-index.yml: gh-actions/data/check-index.yml
       .github/workflows/deploy.yml: gh-actions/data/deploy.yml
       .github/workflows/keep-alive.yml: gh-actions/master/keep-alive.yml
   relaton-data-rfcsubseries:
     remote: ssh://git@github.com/relaton/relaton-data-rfcsubseries
     branch: v2
     files:
+      .github/workflows/check-index.yml: gh-actions/data/check-index.yml
       .github/workflows/crawler.yml: gh-actions/data/crawler.yml
       .github/workflows/deploy.yml: gh-actions/data/deploy.yml
       .github/workflows/keep-alive.yml: gh-actions/master/keep-alive.yml
@@ -394,6 +420,7 @@ repositories:
     remote: ssh://git@github.com/relaton/relaton-data-rfcs
     branch: v2
     files:
+      .github/workflows/check-index.yml: gh-actions/data/check-index.yml
       .github/workflows/crawler.yml: gh-actions/data/crawler.yml
       .github/workflows/deploy.yml: gh-actions/data/deploy.yml
       .github/workflows/keep-alive.yml: gh-actions/master/keep-alive.yml
@@ -407,6 +434,7 @@ repositories:
     remote: ssh://git@github.com/relaton/relaton-data-ids
     branch: v2
     files:
+      .github/workflows/check-index.yml: gh-actions/data/check-index.yml
       .github/workflows/crawler.yml: gh-actions/data/crawler.yml
       .github/workflows/deploy.yml: gh-actions/data/deploy.yml
       .github/workflows/keep-alive.yml: gh-actions/master/keep-alive.yml
@@ -414,6 +442,7 @@ repositories:
     remote: ssh://git@github.com/relaton/relaton-data-xsf
     branch: v2
     files:
+      .github/workflows/check-index.yml: gh-actions/data/check-index.yml
       .github/workflows/crawler.yml: gh-actions/data/crawler.yml
       .github/workflows/deploy.yml: gh-actions/data/deploy.yml
       .github/workflows/keep-alive.yml: gh-actions/master/keep-alive.yml
@@ -421,6 +450,7 @@ repositories:
     remote: ssh://git@github.com/relaton/relaton-data-ccsds
     branch: v2
     files:
+      .github/workflows/check-index.yml: gh-actions/data/check-index.yml
       .github/workflows/crawler.yml: gh-actions/data/crawler.yml
       .github/workflows/deploy.yml: gh-actions/data/deploy.yml
       .github/workflows/keep-alive.yml: gh-actions/master/keep-alive.yml
@@ -428,6 +458,7 @@ repositories:
     remote: ssh://git@github.com/relaton/relaton-data-etsi
     branch: v2
     files:
+      .github/workflows/check-index.yml: gh-actions/data/check-index.yml
       .github/workflows/crawler.yml: gh-actions/data/crawler.yml
       .github/workflows/deploy.yml: gh-actions/data/deploy.yml
       .github/workflows/keep-alive.yml: gh-actions/master/keep-alive.yml
@@ -435,6 +466,7 @@ repositories:
     remote: ssh://git@github.com/relaton/relaton-data-plateau
     branch: v2
     files:
+      .github/workflows/check-index.yml: gh-actions/data/check-index.yml
       .github/workflows/crawler.yml: gh-actions/data/crawler.yml
       .github/workflows/deploy.yml: gh-actions/data/deploy.yml
       .github/workflows/keep-alive.yml: gh-actions/master/keep-alive.yml
@@ -442,6 +474,7 @@ repositories:
     remote: ssh://git@github.com/relaton/relaton-data-jis
     branch: v2
     files:
+      .github/workflows/check-index.yml: gh-actions/data/check-index.yml
       .github/workflows/crawler.yml: gh-actions/data/crawler.yml
       .github/workflows/deploy.yml: gh-actions/data/deploy.yml
       .github/workflows/keep-alive.yml: gh-actions/master/keep-alive.yml
@@ -449,6 +482,7 @@ repositories:
     remote: ssh://git@github.com/relaton/relaton-data-adobe
     branch: main
     files:
+      .github/workflows/check-index.yml: gh-actions/data/check-index.yml
       .github/workflows/crawler.yml: gh-actions/data/crawler.yml
       .github/workflows/deploy.yml: gh-actions/data/deploy.yml
       .github/workflows/keep-alive.yml: gh-actions/master/keep-alive.yml
@@ -456,6 +490,7 @@ repositories:
     remote: ssh://git@github.com/relaton/relaton-data-easc
     branch: main
     files:
+      .github/workflows/check-index.yml: gh-actions/data/check-index.yml
       .github/workflows/crawler.yml: gh-actions/data/crawler.yml
       .github/workflows/deploy.yml: gh-actions/data/deploy.yml
       .github/workflows/keep-alive.yml: gh-actions/master/keep-alive.yml
@@ -463,6 +498,7 @@ repositories:
     remote: ssh://git@github.com/relaton/relaton-data-gost
     branch: main
     files:
+      .github/workflows/check-index.yml: gh-actions/data/check-index.yml
       .github/workflows/crawler.yml: gh-actions/data/crawler.yml
       .github/workflows/deploy.yml: gh-actions/data/deploy.yml
       .github/workflows/keep-alive.yml: gh-actions/master/keep-alive.yml
@@ -470,6 +506,7 @@ repositories:
     remote: ssh://git@github.com/relaton/relaton-data-jcgm
     branch: main
     files:
+      .github/workflows/check-index.yml: gh-actions/data/check-index.yml
       .github/workflows/crawler.yml: gh-actions/data/crawler.yml
       .github/workflows/deploy.yml: gh-actions/data/deploy.yml
       .github/workflows/keep-alive.yml: gh-actions/master/keep-alive.yml
@@ -477,6 +514,7 @@ repositories:
     remote: ssh://git@github.com/relaton/relaton-data-oiml
     branch: main
     files:
+      .github/workflows/check-index.yml: gh-actions/data/check-index.yml
       .github/workflows/crawler.yml: gh-actions/data/crawler.yml
       .github/workflows/deploy.yml: gh-actions/data/deploy.yml
       .github/workflows/keep-alive.yml: gh-actions/master/keep-alive.yml

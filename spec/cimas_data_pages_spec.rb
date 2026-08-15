@@ -21,6 +21,12 @@ RSpec.describe "configs.yml <-> cimas.yml consistency" do
   # leaking to top-level Object; the nested `it` blocks close over it.
   deploy_mapping = {
     ".github/workflows/deploy.yml" => "gh-actions/data/deploy.yml",
+    # The pre-merge half of the same pipeline. Both callers reach the same
+    # reusable workflow, so a repo that gets one and not the other either
+    # publishes a corpus nothing checked, or checks one it never publishes.
+    # This loop only sees repos configs.yml lists; the pairing is asserted for
+    # the whole `data` group, in both directions, further down.
+    ".github/workflows/check-index.yml" => "gh-actions/data/check-index.yml",
   }.freeze
 
   configs.repos.each do |entry|
@@ -46,7 +52,7 @@ RSpec.describe "configs.yml <-> cimas.yml consistency" do
           .to eq(entry.fetch("branch"))
       end
 
-      it "maps deploy.yml from the data template" do
+      it "maps the data-page callers from their templates" do
         files = repositories.fetch(cimas_key).fetch("files")
         deploy_mapping.each do |dest, src|
           expect(files[dest]).to eq(src),
@@ -58,7 +64,7 @@ RSpec.describe "configs.yml <-> cimas.yml consistency" do
         # The inverse of the guard this example replaces. `relaton index` needs
         # no Gemfile: `source: gem` installs relaton-cli, `source: git` writes
         # $RUNNER_TEMP/Gemfile.index and points BUNDLE_GEMFILE at it. A restored
-        # mapping would re-create the retired Jekyll bundle in 29 repos and
+        # mapping would re-create the retired Jekyll bundle in 30 repos and
         # re-establish the "this repo builds with Jekyll" signal the migration
         # removes — harmless to the build, which is exactly why it would stick.
         expect(repositories.fetch(cimas_key).fetch("files")).not_to have_key("Gemfile.deploy")
@@ -86,8 +92,35 @@ RSpec.describe "configs.yml <-> cimas.yml consistency" do
                          "#{uncovered.join(', ')}"
   end
 
+  it "syncs deploy.yml and check-index.yml together, or neither" do
+    # Not folded into the per-repo examples above: those iterate configs.yml,
+    # which deliberately has no relaton-data-ietf row (it gets deploy.yml but
+    # publishes no document index). A repo that merges data with no PR-time
+    # build is exactly the gap this file exists to make loud, whether or not it
+    # has a page — so drive this one off cimas.yml instead.
+    #
+    # Both directions, because both halves fail silently and the per-repo
+    # examples above can only see repos configs.yml already knows about. A repo
+    # with deploy.yml alone publishes a corpus nothing checked; one with
+    # check-index.yml alone checks a corpus it never publishes, and would stay
+    # green here forever if this only looked at repos that have deploy.yml.
+    mapped = lambda do |name, dest|
+      files = repositories.fetch(name, {})&.fetch("files", nil) || {}
+      files[dest]
+    end
+    lopsided = data_group.reject do |name|
+      deploy = mapped.call(name, ".github/workflows/deploy.yml") == "gh-actions/data/deploy.yml"
+      check = mapped.call(name, ".github/workflows/check-index.yml") == "gh-actions/data/check-index.yml"
+      deploy == check
+    end
+
+    expect(lopsided).to be_empty,
+                        "these data repos map only one of deploy.yml / check-index.yml: " \
+                        "#{lopsided.join(', ')}"
+  end
+
   # The failure mode that made this whole change necessary is entirely silent: a
-  # per-repo value in a Cimas-synced template is copied verbatim into 29 repos,
+  # per-repo value in a Cimas-synced template is copied verbatim into 30 repos,
   # and a per-repo value hand-added to a *synced destination* is reverted on the
   # next sync with nothing red in CI. These two guards make either a test
   # failure, for every template cimas.yml syncs — not just deploy.yml.

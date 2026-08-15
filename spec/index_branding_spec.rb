@@ -149,7 +149,7 @@ RSpec.describe "DataIndexConfig branding" do
 
   # The unit examples above all bypass the executable the workflow actually runs.
   # Without these, renaming a method on GithubOutput or DataIndexConfig would
-  # leave the whole suite green and break the resolve step in all 29 repos.
+  # leave the whole suite green and break the resolve step in all 30 repos.
   describe "bin/index-branding" do
     bin = File.join(repo_root, "bin/index-branding")
 
