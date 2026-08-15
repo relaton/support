@@ -71,6 +71,22 @@ repos:
   - { repo: iho,          display: IHO,           source: index-v3.yaml, branch: v2,   pubid_class: Pubid::Iho::Identifier }
   - { repo: iso,          display: ISO,           source: index-v2.yaml, branch: v2,   pubid_class: Pubid::Iso::Identifier }
   - { repo: itu-r,        display: ITU-R,         source: index-v2.yaml, branch: v2,   pubid_class: Pubid::Itu::Identifier }
+  # The combined ITU-R + ITU-T corpus (one flat data/ folder, split by filename
+  # prefix), which supersedes relaton-data-itu-r as a dataset. Both keep a row
+  # for now: the relaton gem still consumes -itu-r, so retiring that site is a
+  # separate consumer migration. Spelt out rather than one-lined because the
+  # description has to say "both sectors" — otherwise the two ITU sites read
+  # identically. Same `pubid_class` as -itu-r: the ids serialize to the same
+  # `pubid:itu:*` shape.
+  - repo: itu
+    display: ITU
+    source: index-v2.yaml
+    branch: main
+    pubid_class: Pubid::Itu::Identifier
+    favicon: 'https://www.itu.int/favicon.ico'
+    description: >-
+      Combined bibliographic index of ITU-R and ITU-T publications in Relaton
+      format.
   - { repo: jcgm,         display: JCGM,          source: index-v1.yaml, branch: main, pubid_class: Pubid::Jcgm::Identifier }
   - { repo: jis,          display: JIS,           source: index-v2.yaml, branch: v2,   pubid_class: Pubid::Jis::Identifier }
   - { repo: nist,         display: NIST,          source: index-v2.yaml, branch: v2,   pubid_class: Pubid::Nist::Identifier }

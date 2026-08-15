@@ -1,0 +1,11 @@
+title: ITU Index
+description: >-
+  Combined bibliographic index of ITU-R and ITU-T publications in Relaton format.
+paginate: 100
+jekyll-index:
+  favicon: 'https://www.itu.int/favicon.ico'
+  source: 'index-v2.yaml'
+  baseurl: 'https://raw.githubusercontent.com/relaton/relaton-data-itu/main/'
+  add_type_to_reference: true
+  pubid_class: 'Pubid::Itu::Identifier'
+  pubid_require: 'pubid'
