@@ -518,6 +518,14 @@ repositories:
       .github/workflows/crawler.yml: gh-actions/data/crawler.yml
       .github/workflows/deploy.yml: gh-actions/data/deploy.yml
       .github/workflows/keep-alive.yml: gh-actions/master/keep-alive.yml
+  relaton-data-iala:
+    remote: ssh://git@github.com/relaton/relaton-data-iala
+    branch: main
+    files:
+      .github/workflows/check-index.yml: gh-actions/data/check-index.yml
+      .github/workflows/crawler.yml: gh-actions/data/crawler.yml
+      .github/workflows/deploy.yml: gh-actions/data/deploy.yml
+      .github/workflows/keep-alive.yml: gh-actions/master/keep-alive.yml
   # models
   relaton-model-3gpp:
     remote: ssh://git@github.com/relaton/relaton-model-3gpp
@@ -738,6 +746,7 @@ groups:
     - relaton-data-gost
     - relaton-data-jcgm
     - relaton-data-oiml
+    - relaton-data-iala
   python:
     - relaton-py
     - relaton-bib-py

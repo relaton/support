@@ -66,6 +66,7 @@ repos:
     description: >-
       Protocol parameter registries represent the authoritative record of many of
       the codes and numbers contained in a variety of Internet protocols.
+  - { repo: iala,          display: IALA,          source: index-v2.yaml, branch: main, pubid_class: Pubid::Iala::Identifier }
   - { repo: iec,          display: IEC,           source: index-v2.yaml, branch: v2,   pubid_class: Pubid::Iec::Identifier }
   - { repo: ieee,         display: IEEE,          source: index-v2.yaml, branch: v2,   pubid_class: Pubid::Ieee::Identifier }
   - { repo: iho,          display: IHO,           source: index-v3.yaml, branch: v2,   pubid_class: Pubid::Iho::Identifier }
