@@ -361,8 +361,10 @@ data YAML directly without calling pubid at all.
 
 == Status (verified 2026-08-03)
 
-`configs.yml` covers *29 repos*: the 26 rollout targets plus the 3 already-live
-(*ids, oasis, w3c*), folded in so the generator is the single source for every site.
+`configs.yml` covers *30 repos*: the 26 rollout targets plus the 3 already-live
+(*ids, oasis, w3c*), folded in so the generator is the single source for every site,
+plus *iala* (added 2026-08-17; `main`-default, `index-v2.yaml` with structured
+`Pubid::Iala` ids — its crawler already writes index-v1 + index-v2 in one pass).
 The 3 live ones carry per-repo `favicon`/`description` overrides (and w3c a
 `pubid_require: relaton/w3c/pubid`); regenerating their `_config.yml` reproduces the
 live site (with `baseurl` corrected from `/main/` to their real default `/v2/`).
@@ -381,6 +383,15 @@ Pages *enablement* state (verified via `gh api repos/relaton/relaton-data-<repo>
   itu, jcgm, oiml*. These need step 1, which requires *repo admin* (a plain
   `push`/`repo` token gets HTTP 404 from the Create-Pages endpoint). *itu* was
   added after this section's 2026-08-03 sweep and re-checked 2026-08-15.
+  *iala* and *sdo* were Pages-enabled (build_type workflow) on 2026-08-17 along
+  with the rest, so iala also skips step 1.
+
+*relaton-data-sdo* is deliberately NOT in configs.yml or the cimas.yml `data`
+group: it is the SDO organization & logo store (hand-edited `orgs/`, its own
+`build.yml` commits the merged `index.yaml`, consumed by `Relaton::Sdo` via the
+raw URL), not a document corpus — the shared data-deploy.yml builds from `./data`
+and would fail. A human-browsable org/logo page, if wanted, needs a bespoke
+workflow in that repo, not this pipeline.
 
 Re-check current state any time with:
 

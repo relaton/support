@@ -48,6 +48,14 @@ RSpec.describe DataIndexConfig do
         .to eq("https://raw.githubusercontent.com/relaton/relaton-data-adobe/main/")
     end
 
+    it "renders the iala row: v2 source, main branch, structured Pubid::Iala" do
+      ji = jekyll_index("iala")
+      expect(ji["source"]).to eq("index-v2.yaml")
+      expect(ji["baseurl"])
+        .to eq("https://raw.githubusercontent.com/relaton/relaton-data-iala/main/")
+      expect(ji["pubid_class"]).to eq("Pubid::Iala::Identifier")
+    end
+
     it "applies the default favicon to repos without an override" do
       # The convention is the SDO's own icon where there is a stable URL for one,
       # relaton.org otherwise. Listed explicitly so adding an override is a
@@ -127,11 +135,11 @@ RSpec.describe DataIndexConfig do
   end
 
   describe "configs.yml data" do
-    it "covers exactly the 29 repos with no duplicates" do
+    it "covers exactly the 30 repos with no duplicates" do
       repos = config.repos.map { |e| e["repo"] }
-      expect(repos.size).to eq(29)
-      expect(repos.uniq.size).to eq(29)
-      expect(repos).to include("iso", "ieee", "jis", "adobe", "easc", "gost", "jcgm", "oiml")
+      expect(repos.size).to eq(30)
+      expect(repos.uniq.size).to eq(30)
+      expect(repos).to include("iso", "ieee", "jis", "adobe", "easc", "gost", "jcgm", "oiml", "iala")
       expect(repos).to include("ids", "oasis", "w3c") # already-live, folded in
       # Both ITU rows: `itu` is the combined ITU-R + ITU-T corpus, `itu-r` the
       # ITU-R-only repo the relaton gem still consumes. Neither is a typo for
