@@ -369,10 +369,11 @@ The 3 live ones carry per-repo `favicon`/`description` overrides (and w3c a
 `pubid_require: relaton/w3c/pubid`); regenerating their `_config.yml` reproduces the
 live site (with `baseurl` corrected from `/main/` to their real default `/v2/`).
 
-Live (200): *relaton-data-ids, -oasis, -w3c* — already rolled out.
-
-Pending (Pages 404): *the other 26 repos in `configs.yml`*. Every one's published index
-(`<baseurl><source>`) already returns 200 — i.e. the data side is ready.
+Live (200): *every repo in `configs.yml`* — the rollout completed 2026-08-17
+(adobe seeded its first corpus; ogc, nist, rfcs, rfcsubseries, itu-r, plateau and
+xsf joined via the `cimas-sync-2026-08-17` wave). The only relaton-data-* repos
+without a Pages site are the two deliberate exclusions: *ietf* (publishes no
+document index) and *sdo* (org/logo store, not a document corpus — see below).
 
 Pages *enablement* state (verified via `gh api repos/relaton/relaton-data-<repo>/pages`):
 
