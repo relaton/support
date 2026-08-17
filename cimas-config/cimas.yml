@@ -275,7 +275,10 @@ repositories:
       .github/workflows/keep-alive.yml: gh-actions/master/keep-alive.yml
   relaton-data-ietf:
     remote: ssh://git@github.com/relaton/relaton-data-ietf
-    branch: master
+    # The repo's real default branch (renamed from master); deploy.yml's
+    # Pages gate only publishes from the default branch, so a stale
+    # branch: here syncs workflows onto a branch that never deploys.
+    branch: main
     files:
       .github/workflows/check-index.yml: gh-actions/data/check-index.yml
       .github/workflows/crawler.yml: gh-actions/data/crawler.yml
