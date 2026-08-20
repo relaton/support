@@ -359,30 +359,42 @@ jobs:
           TITLE: ${{ steps.branding.outputs.title }}
           FAVICON: ${{ steps.branding.outputs.favicon }}
           DESCRIPTION: ${{ steps.branding.outputs.description }}
+          PUBID_FLAVOR: ${{ steps.branding.outputs.pubid_flavor }}
+          PUBLISH_DATA: ${{ steps.branding.outputs.publish_data }}
         run: |
+          EXTRA=()
+          [ -n "$PUBID_FLAVOR" ] && EXTRA+=(--pubid-flavor "$PUBID_FLAVOR")
+          [ "$PUBLISH_DATA" = "true" ] && EXTRA+=(--publish-data)
           relaton index "${{ inputs.data-dir }}" \
             --output _site \
             --title "$TITLE" \
             --favicon "$FAVICON" \
             --description "$DESCRIPTION" \
-            --base-url "https://raw.githubusercontent.com/${GITHUB_REPOSITORY}/${GITHUB_REF_NAME}"
+            --base-url "https://raw.githubusercontent.com/${GITHUB_REPOSITORY}/${GITHUB_REF_NAME}" \
+            "${EXTRA[@]}"
 
       - name: Build index (git source)
         if: inputs.source == 'git'
         # BUNDLE_GEMFILE is exported to GITHUB_ENV in the build step above.
         # TITLE/FAVICON/DESCRIPTION travel by env for the same reason as the gem
-        # step.
+        # step. PUBID_FLAVOR/PUBLISH_DATA come from configs.yml via branding.
         env:
           TITLE: ${{ steps.branding.outputs.title }}
           FAVICON: ${{ steps.branding.outputs.favicon }}
           DESCRIPTION: ${{ steps.branding.outputs.description }}
+          PUBID_FLAVOR: ${{ steps.branding.outputs.pubid_flavor }}
+          PUBLISH_DATA: ${{ steps.branding.outputs.publish_data }}
         run: |
+          EXTRA=()
+          [ -n "$PUBID_FLAVOR" ] && EXTRA+=(--pubid-flavor "$PUBID_FLAVOR")
+          [ "$PUBLISH_DATA" = "true" ] && EXTRA+=(--publish-data)
           bundle exec relaton index "${{ github.workspace }}/${{ inputs.data-dir }}" \
             --output "${{ github.workspace }}/_site" \
             --title "$TITLE" \
             --favicon "$FAVICON" \
             --description "$DESCRIPTION" \
-            --base-url "https://raw.githubusercontent.com/${GITHUB_REPOSITORY}/${GITHUB_REF_NAME}"
+            --base-url "https://raw.githubusercontent.com/${GITHUB_REPOSITORY}/${GITHUB_REF_NAME}" \
+            "${EXTRA[@]}"
 
       # Both gated on the deploy job's own publish gate, so a run that cannot
       # publish does no Pages work: no API call to configure Pages, no artifact

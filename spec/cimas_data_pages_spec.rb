@@ -77,10 +77,9 @@ RSpec.describe "configs.yml <-> cimas.yml consistency" do
     # has no configs.yml row would deploy the theme with no per-repo _config.yml.
     # Excludes are the deliberate non-index repos (see data-pages-rollout hand-off).
     known = configs.repos.map { |e| "relaton-data-#{e['repo']}" }
-    # ietf gets deploy.yml but is deliberately not a Pages index (no document
-    # index published); every other data-group repo is covered by configs.yml,
-    # including the already-live ids/oasis/w3c now folded in.
-    excluded = %w[relaton-data-ietf]
+    # Every data-group repo that gets deploy.yml is covered by configs.yml
+    # (ietf was excluded until its combined-corpus rollout landed).
+    excluded = %w[]
     deploys_pages =
       data_group.select do |name|
         files = repositories.fetch(name, {}).fetch("files", nil) || {}
@@ -93,9 +92,8 @@ RSpec.describe "configs.yml <-> cimas.yml consistency" do
   end
 
   it "syncs deploy.yml and check-index.yml together, or neither" do
-    # Not folded into the per-repo examples above: those iterate configs.yml,
-    # which deliberately has no relaton-data-ietf row (it gets deploy.yml but
-    # publishes no document index). A repo that merges data with no PR-time
+    # Not folded into the per-repo examples above: those iterate configs.yml.
+    # A repo that merges data with no PR-time
     # build is exactly the gap this file exists to make loud, whether or not it
     # has a page — so drive this one off cimas.yml instead.
     #
