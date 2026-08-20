@@ -165,7 +165,7 @@ RSpec.describe ".github/workflows/data-deploy.yml" do
   describe "resolving branding from relaton/support" do
     it "checks out relaton/support, the branding source of truth" do
       # Branding cannot live in the caller: cimas.yml maps
-      # .github/workflows/deploy.yml as a whole-file copy for 29 repos, so a
+      # .github/workflows/deploy.yml as a whole-file copy for 30 repos, so a
       # `with:` block is wiped on the next sync and the page silently loses its
       # favicon and description.
       expect(support_checkout).not_to be_nil
@@ -293,8 +293,8 @@ RSpec.describe ".github/workflows/data-deploy.yml" do
     it "queues only the runs that can actually publish" do
       # Under GitHub's default `queue: single` a pending run is cancelled the
       # moment a third joins its group. A run that builds and then skips
-      # `deploy` — a dispatch from a non-default branch, or a pull request or
-      # tag push from a caller that still triggers on them — would, parked in
+      # `deploy` — every Check index run, one group per pull request, plus a
+      # dispatch from a non-default branch — would, parked in
       # the deployment queue, drop a pending run carrying freshly crawled
       # data. Keying on the deploy job's *own* gate is what
       # keeps the split honest — assert they are literally the same expression,
@@ -309,15 +309,83 @@ RSpec.describe ".github/workflows/data-deploy.yml" do
     end
   end
 
-  it "skips a build whose triggering workflow run failed" do
-    # A `workflow_run` caller fires on `completed`, not `success`. The guard
-    # lives here, not in each caller's `deploy:` job, so no caller can forget
-    # it — a called workflow inherits the caller run's `github` context,
-    # event payload included. `deploy` is `needs: build_index_page`, so
-    # skipping the build skips the publish too.
-    expect(build_job.fetch("if")).to eq(
-      "github.event_name != 'workflow_run' || " \
-      "github.event.workflow_run.conclusion == 'success'",
-    )
+  describe "which workflow_run events are worth a build" do
+    # Both guards live here, not in each caller's `deploy:` job, so no caller
+    # can forget one — a called workflow inherits the caller run's `github`
+    # context, event payload included. `deploy` is `needs: build_index_page`,
+    # so skipping the build skips the publish with it.
+    build_if = build_job.fetch("if")
+
+    it "skips a build whose triggering workflow run failed" do
+      # A `workflow_run` caller fires on `completed`, not `success` — there is
+      # no `success` activity type — so the conclusion is filtered here.
+      expect(build_if).to include("github.event.workflow_run.conclusion == 'success'")
+    end
+
+    it "ignores a crawler run from a branch that is not the repo's default" do
+      # The caller's `workflow_run.branches` lists every default branch name in
+      # use across the fleet, to stay repo-agnostic. In a repo carrying more
+      # than one of them that leaks: relaton-data-oasis defaults to v2 and still
+      # has a stale `main`, so a crawl on the dormant branch fired Deploy — and
+      # Deploy runs against the default branch, so the publish gate PASSED and
+      # it republished for real. Spurious work rather than corruption, but the
+      # caller's list is only a pre-filter and this is the actual gate.
+      expect(build_if).to include(
+        "github.event.workflow_run.head_branch == github.event.repository.default_branch",
+      )
+    end
+
+    it "applies both only to workflow_run, so every other trigger still builds" do
+      # Asserted whole, because the two clauses above pass just as well against
+      # an `if:` that has quietly stopped building on the cron, a dispatch or a
+      # pull request — which would take the pre-merge check with it.
+      expect(build_if.split.join(" ")).to eq(
+        "github.event_name != 'workflow_run' " \
+        "|| (github.event.workflow_run.conclusion == 'success' " \
+        "&& github.event.workflow_run.head_branch == github.event.repository.default_branch)",
+      )
+    end
+  end
+
+  describe "runs that cannot publish do no Pages work" do
+    # Found by `uses:`, not by `name:`, so renaming a step cannot silently drop
+    # the assertion.
+    pages_steps = steps.select do |s|
+      s["uses"].to_s.start_with?("actions/configure-pages", "actions/upload-pages-artifact")
+    end
+
+    it "gates both Pages steps on the deploy job's own publish gate" do
+      # This is what makes the Check index caller a validation run without an
+      # input to pass: a pull_request run's ref is refs/pull/N/merge, so it
+      # builds the corpus and stops here. It is also retroactive — any legacy
+      # caller still triggering on push or a tag stops paying for a Pages
+      # artifact it can never publish.
+      expect(pages_steps.map { |s| s["uses"] })
+        .to contain_exactly(a_string_starting_with("actions/configure-pages"),
+                            a_string_starting_with("actions/upload-pages-artifact"))
+      expect(pages_steps.map { |s| s["if"] }).to all(eq(deploy_gate))
+    end
+
+    it "still builds the index on a run that cannot publish" do
+      # THE example that fails if someone "optimises" the PR path by extending
+      # the gate to a build step: that would leave Check index green having
+      # built nothing, which is worse than not having the check at all — one
+      # that cannot fail still reads as proof the corpus parses. (The same
+      # gate on the *job* is caught by the `if:` example above instead.)
+      gated = steps.select { |s| s["if"] == deploy_gate }
+
+      expect(gated).to eq(pages_steps)
+      expect(index_steps.map { |s| s["if"] }).not_to include(deploy_gate)
+    end
+
+    it "spells the gate identically everywhere it appears" do
+      # Four copies now — two steps, the deploy job, the concurrency
+      # discriminator. Narrowing one and forgetting the others is silent in
+      # both directions: publishing from a ref that should not, or a fleet that
+      # quietly stops publishing at all.
+      expect(pages_steps.map { |s| s["if"] } + [workflow.fetch("jobs").fetch("deploy").fetch("if")])
+        .to all(eq(deploy_gate))
+      expect(workflow.fetch("concurrency").fetch("group")).to include(deploy_gate)
+    end
   end
 end

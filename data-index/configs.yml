@@ -31,7 +31,7 @@
 # deploy.yml `with:` block, is where a data repo's Pages branding lives. (There
 # is no per-entry `title` key: the title always derives from `display`.)
 # It has to be: cimas.yml maps `.github/workflows/deploy.yml` as a whole-file
-# copy for 29 repos, so a `with:` block is wiped on the next `cimas sync` and the
+# copy for 30 repos, so a `with:` block is wiped on the next `cimas sync` and the
 # page silently loses its favicon and description.
 
 defaults:
@@ -66,6 +66,7 @@ repos:
     description: >-
       Protocol parameter registries represent the authoritative record of many of
       the codes and numbers contained in a variety of Internet protocols.
+  - { repo: iala,          display: IALA,          source: index-v2.yaml, branch: main, pubid_class: Pubid::Iala::Identifier }
   - { repo: iec,          display: IEC,           source: index-v2.yaml, branch: v2,   pubid_class: Pubid::Iec::Identifier }
   - { repo: ieee,         display: IEEE,          source: index-v2.yaml, branch: v2,   pubid_class: Pubid::Ieee::Identifier }
   - { repo: iho,          display: IHO,           source: index-v3.yaml, branch: v2,   pubid_class: Pubid::Iho::Identifier }

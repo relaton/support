@@ -1,5 +1,6 @@
-# Guards the Cimas caller template that Cimas syncs into every relaton-data-*
-# repo as `.github/workflows/deploy.yml`.
+# Guards the Cimas caller templates that Cimas syncs into every relaton-data-*
+# repo: `.github/workflows/deploy.yml` and its pre-merge sibling
+# `.github/workflows/check-index.yml`.
 #
 # The problem it encodes: a `push` trigger could never fire on crawled data.
 # crawler.yml's "Push data" step commits with the default actions/checkout
@@ -8,24 +9,34 @@
 # Pages — and it assumed a fixed one-hour gap that scheduled dispatch does not
 # honour (11 of relaton-data-iana's last 12 Crawler runs *started* at or after
 # 14:58 UTC despite a 14:00 cron, several past 16:00), so the 15:00 deploy
-# usually indexed the previous day's data. Both templates have since dropped
+# usually indexed the previous day's data. Deploy and Crawler have since dropped
 # `push` and `pull_request` entirely; what remains is asserted below.
+#
+# Dropping `pull_request` from Deploy also dropped the only pre-merge proof that
+# the corpus still parses. That is back as its own caller — Check index, same
+# reusable workflow, no Pages work — and the split between the two is what the
+# `check-index.yml` block below pins.
 #
 # Ordering is now deterministic via `workflow_run`. The couplings below are all
 # silent when broken — nothing goes red in CI, the fleet just quietly stops
 # republishing — so they are pinned here.
-RSpec.describe "cimas-config/gh-actions/data/deploy.yml" do
+RSpec.describe "cimas-config/gh-actions/data/*.yml (the Cimas caller templates)" do
   repo_root = File.expand_path("..", __dir__)
   template = ->(name) { YAML.safe_load_file(File.join(repo_root, "cimas-config/gh-actions/data", name)) }
 
   deploy = template.call("deploy.yml")
   crawler = template.call("crawler.yml")
+  # Loaded lazily, unlike the two above: were check-index.yml ever missing, a
+  # load here would die at describe-body evaluation with Errno::ENOENT and take
+  # every unrelated example in the file with it.
+  check_index_path = File.join(repo_root, "cimas-config/gh-actions/data/check-index.yml")
   # The authority on which repos this template is synced into, and on each one's
   # real default branch.
   cimas = YAML.safe_load_file(File.join(repo_root, "cimas-config/cimas.yml"))
   # Psych reads the unquoted `on:` key as YAML 1.1 boolean true.
   triggers = deploy.fetch(true)
   workflow_run = triggers["workflow_run"]
+  deploy_job = deploy.fetch("jobs").fetch("deploy")
 
   # "0 14 * * *" -> 14
   cron_hour = ->(schedule) { Integer(schedule.fetch(0).fetch("cron").split.fetch(1)) }
@@ -52,9 +63,11 @@ RSpec.describe "cimas-config/gh-actions/data/deploy.yml" do
     it "accepts every default branch name in use across the fleet" do
       # `workflow_run`'s branch filter matches the *triggering* run's branch, so
       # this list has to cover every default branch the synced repos actually
-      # use (23 of the 29 are on v2, the rest on main or master) for the file to
-      # stay repo-agnostic. Publication is still gated on the repo's real
-      # default branch inside data-deploy.yml.
+      # use (23 of the 30 are on v2, six on main, one on master) for the file to
+      # stay repo-agnostic. It is only a pre-filter: a repo carrying more than
+      # one of those names lets a crawl on a dormant branch through, so
+      # data-deploy.yml gates on `workflow_run.head_branch` being the repo's
+      # real default branch, and publication on the run's own ref.
       #
       # Derived from cimas.yml rather than hardcoded, and compared against the
       # `push` trigger before that — this template has neither a `push` block
@@ -72,7 +85,7 @@ RSpec.describe "cimas-config/gh-actions/data/deploy.yml" do
     end
   end
 
-  describe "what neither template triggers on any more" do
+  describe "what each template triggers on" do
     crawler_triggers = crawler.fetch(true)
 
     it "crawls only on a schedule or by hand" do
@@ -101,14 +114,33 @@ RSpec.describe "cimas-config/gh-actions/data/deploy.yml" do
       expect(triggers.keys).to contain_exactly("workflow_run", "schedule", "workflow_dispatch")
     end
 
-    it "leaves no push or pull_request trigger in either template" do
+    it "leaves no push or pull_request trigger in Deploy or Crawler" do
       # Stated separately from the two `contain_exactly` examples above because
       # this is the invariant that fails silently: re-adding either trigger just
-      # burns Actions minutes fleet-wide, in 29 repos at once, with nothing red.
+      # burns Actions minutes fleet-wide, in 30 repos at once, with nothing red.
+      #
+      # Note what re-adding `pull_request` *here* would not be: a restored
+      # pre-merge check. That lives in check-index.yml, which reaches the same
+      # build through the same reusable workflow and stops short of Pages. On
+      # Deploy the trigger only buys back the build-then-skip-the-publish path.
       [triggers, crawler_triggers].each do |t|
         expect(t).not_to have_key("push")
         expect(t).not_to have_key("pull_request")
       end
+    end
+
+    it "splits publishing and pre-merge checking across two callers" do
+      # The whole shape in one example: exactly one of the three templates
+      # triggers on a pull request, and it is not the one that can publish.
+      # Collapsing them back into a single caller is what this forbids —
+      # whichever direction it is collapsed in.
+      on_pull_request = {
+        "deploy.yml" => triggers,
+        "crawler.yml" => crawler_triggers,
+        "check-index.yml" => YAML.safe_load_file(check_index_path).fetch(true),
+      }.select { |_, t| t.key?("pull_request") }.keys
+
+      expect(on_pull_request).to eq(["check-index.yml"])
     end
   end
 
@@ -120,9 +152,69 @@ RSpec.describe "cimas-config/gh-actions/data/deploy.yml" do
       .to be >= cron_hour.call(crawler.fetch(true).fetch("schedule")) + 3
   end
 
-  describe "what it deliberately leaves to the shared workflow" do
-    deploy_job = deploy.fetch("jobs").fetch("deploy")
+  describe "the pre-merge check caller (check-index.yml)" do
+    # Everything here loads inside the example, so a missing template fails as
+    # one red example rather than aborting the file.
+    doc = -> { YAML.safe_load_file(check_index_path) }
+    job = -> { doc.call.fetch("jobs").values.fetch(0) }
 
+    it "exists as its own Cimas template" do
+      # support#62 dropped `pull_request` from Deploy for good reasons and took
+      # the fleet's only pre-merge validation with it: `relaton index` parses the
+      # whole corpus, so one malformed data/<flavor>-*.yaml fails the build for
+      # the entire flavor. Merged green, that surfaces hours later as a red
+      # *scheduled* Deploy on the default branch — never on the PR that caused
+      # it — while Pages keeps serving the previous deployment, so there is
+      # nothing user-visible to notice either.
+      expect(File.exist?(check_index_path)).to be(true),
+                                               "the pre-merge check caller is missing; without it a PR " \
+                                               "touching data/ runs no build at all in 30 repos"
+    end
+
+    it "triggers on pull requests and nothing else" do
+      # `workflow_dispatch` is the edit to resist, and the reason it is pinned
+      # rather than merely omitted: dispatching THIS workflow from the default
+      # branch satisfies the shared workflow's publish gate exactly as Deploy
+      # does, so a workflow named "Check index" would configure Pages, upload
+      # the artifact and publish for real. Dispatch Deploy for that.
+      expect(doc.call.fetch(true).keys).to contain_exactly("pull_request")
+    end
+
+    it "calls the same shared workflow Deploy does" do
+      # Equality with deploy.yml rather than a literal string: two callers, one
+      # build definition. Pointed at anything else, a PR would be checked
+      # against a build that has drifted from the one that publishes — green
+      # here and broken on merge, which is the failure this file exists to stop.
+      expect(job.call.fetch("uses")).to eq(deploy_job.fetch("uses"))
+    end
+
+    it "passes no inputs and declares no guard of its own" do
+      # Same doctrine as deploy.yml, and the reason there is no `validate-only`
+      # input: an input has to arrive in a `with:` block, which no synced caller
+      # may carry (spec/cimas_data_pages_spec.rb forbids a literal there, and a
+      # hand-added one is reverted by the next sync with nothing red). What
+      # makes this a validation run is decided centrally instead — the shared
+      # workflow gates both Pages steps and the `deploy` job on the run's ref,
+      # and a pull_request run's ref is refs/pull/N/merge.
+      expect(job.call).not_to have_key("with")
+      expect(job.call).not_to have_key("if")
+      expect(job.call).not_to have_key("concurrency")
+      expect(doc.call).not_to have_key("concurrency")
+    end
+
+    it "is named distinctly from the templates synced alongside it" do
+      # `name:` is an identity GitHub keys on: deploy.yml's `workflow_run`
+      # selects the triggering workflow by name, so a collision here would make
+      # a Check index run fire Deploy. It is also what a required status check
+      # would be named after.
+      names = [deploy.fetch("name"), crawler.fetch("name"), doc.call.fetch("name")]
+
+      expect(doc.call.fetch("name")).to eq("Check index")
+      expect(names.uniq.size).to eq(3)
+    end
+  end
+
+  describe "what it deliberately leaves to the shared workflow" do
     it "calls the shared data-deploy.yml" do
       expect(deploy_job.fetch("uses")).to eq("relaton/support/.github/workflows/data-deploy.yml@main")
     end
@@ -143,8 +235,8 @@ RSpec.describe "cimas-config/gh-actions/data/deploy.yml" do
 
     it "passes no inputs at all" do
       # THE reason branding moved into data-index/configs.yml. cimas.yml maps
-      # this file into 29 repos as a whole-file copy, so anything in a `with:`
-      # here is either wrong for the other 28 or — once a repo hand-edits it —
+      # this file into 30 repos as a whole-file copy, so anything in a `with:`
+      # here is either wrong for the other 29 or — once a repo hand-edits it —
       # silently reverted by the next `cimas sync`. Branding failed silently (the
       # page just loses its favicon), which is why it moved to configs.yml.
       #
