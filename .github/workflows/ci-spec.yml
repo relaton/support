@@ -20,6 +20,9 @@ on:
 
 jobs:
   spec:
+    # Checkout and rspec; this job publishes nothing.
+    permissions:
+      contents: read
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

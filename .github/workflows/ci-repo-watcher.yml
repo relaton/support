@@ -8,6 +8,15 @@ on:
 
 jobs:
   watcher:
+    # `issues: write` is the load-bearing half. metanorma/ci's ci-repo-watcher.yml
+    # declares `contents: read` + `issues: write` for itself, and when it finds
+    # repos missing from cimas.yml it opens or updates an issue via
+    # metanorma/ci/comment-or-create. A caller granting less caps the called
+    # workflow, so trimming this to `contents: read` would fail that step on a
+    # daily cron nobody watches — the watcher would simply stop reporting.
+    permissions:
+      contents: read
+      issues: write
     uses: metanorma/ci/.github/workflows/ci-repo-watcher.yml@main
     secrets:
       token: ${{ secrets.GITHUB_TOKEN }}

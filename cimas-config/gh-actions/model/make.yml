@@ -8,4 +8,8 @@ on:
 
 jobs:
   make:
+    # make.yml checks out the repo and runs `bundle exec make clean all` across a
+    # three-OS matrix. It publishes nothing, so read is the union.
+    permissions:
+      contents: read
     uses: relaton/support/.github/workflows/make.yml@main
