@@ -247,4 +247,46 @@ RSpec.describe "cimas-config/gh-actions/data/*.yml (the Cimas caller templates)"
       expect(deploy_job).not_to have_key("with")
     end
   end
+
+  describe "the token grant it hands the shared workflow" do
+    # The counterpart to the block above: everything there is about what this
+    # caller must NOT carry, and `permissions:` is the one thing it must.
+    #
+    # The rule that makes this non-obvious: a called workflow cannot exceed what
+    # the caller granted, so the caller needs the UNION of every scope every job
+    # of the called workflow asks for — not the narrowest set that describes what
+    # the caller itself does. data-deploy.yml declares `contents: read` at
+    # workflow level and adds `pages: write` + `id-token: write` on its `deploy`
+    # job, so all three belong here.
+    #
+    # Narrowing this to `contents: read` — the reflexive "minimal permissions"
+    # edit — does not fail at parse time. It fails minutes into the build, at the
+    # deploy step, in all 30 repos at once, with:
+    #
+    #   The workflow is requesting 'pages: write', but is only allowed 'pages: none'.
+    #
+    # Which is exactly why it is asserted here rather than left to review.
+    deploy_job = deploy.fetch("jobs").fetch("deploy")
+
+    it "grants the union of what data-deploy.yml's jobs request" do
+      expect(deploy_job.fetch("permissions"))
+        .to eq("contents" => "read", "pages" => "write", "id-token" => "write")
+    end
+
+    it "keeps the two Pages scopes specifically" do
+      # Stated separately from the exact-match example above because dropping
+      # either one is the actual failure mode, and a future edit that legitimately
+      # adds a fourth scope should still not be able to remove these two.
+      expect(deploy_job.fetch("permissions")).to include("pages" => "write", "id-token" => "write")
+    end
+
+    it "lets the crawler template push what it crawled" do
+      # `contents: write` is required, not hardening: the shared crawler.yml's
+      # "Push data" step runs `git commit` + `git push` with the credentials
+      # actions/checkout persists. Without it the crawl still runs to completion —
+      # 166,658 documents on the largest flavor — and then fails on the push.
+      expect(crawler.fetch("jobs").fetch("crawl").fetch("permissions"))
+        .to eq("contents" => "write")
+    end
+  end
 end

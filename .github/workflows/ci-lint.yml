@@ -7,5 +7,9 @@ on:
 
 jobs:
   lint:
+    # Matches what metanorma/ci's ci-lint.yml declares for itself: yamllint,
+    # shellcheck and actionlint over a checkout, nothing more.
+    permissions:
+      contents: read
     uses: metanorma/ci/.github/workflows/ci-lint.yml@main
 

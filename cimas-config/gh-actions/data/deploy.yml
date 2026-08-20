@@ -84,4 +84,23 @@ jobs:
     # defaulted to `gem`. That default is now `git`, so those pins set the value
     # they would inherit anyway and a sync dropping them is the cleanup, not the
     # damage. Do not re-add one here.
+    #
+    # `permissions:` is the one thing this job does declare, and it is
+    # deliberately wider than `contents: read`. A called workflow cannot exceed
+    # what the caller granted, so a caller needs the UNION of every scope every
+    # job of the called workflow asks for — data-deploy.yml declares
+    # `contents: read` at workflow level and adds `pages: write` +
+    # `id-token: write` on its own `deploy` job.
+    #
+    # Narrowing this to `contents: read` — the reflexive "minimal permissions"
+    # edit — does not fail at parse time. It fails minutes into the build, at the
+    # deploy step, in all 30 repos at once, with:
+    #
+    #   The workflow is requesting 'pages: write', but is only allowed 'pages: none'.
+    #
+    # Pinned by spec/data_deploy_caller_template_spec.rb. Do not narrow it.
+    permissions:
+      contents: read   # the four checkouts in build_index_page
+      pages: write     # actions/deploy-pages in the deploy job
+      id-token: write  # OIDC verification for that deployment
     uses: relaton/support/.github/workflows/data-deploy.yml@main
