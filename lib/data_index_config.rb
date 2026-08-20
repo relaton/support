@@ -67,6 +67,12 @@ class DataIndexConfig
       "title" => present(title) || (found ? entry_title(found) : derived_title(repo)),
       "favicon" => present(favicon) || (found ? entry_favicon(found) : ""),
       "description" => present(description) || (found ? entry_description(found) : ""),
+      # Machine-index flags for `relaton index` (relaton/relaton#113).
+      # Derived from the existing pubid_class row so no new configs.yml
+      # key is required for structured corpora; publish_data is the one
+      # explicit opt-in (only fully-derived corpora want it).
+      "pubid_flavor" => found ? pubid_flavor(found) : "",
+      "publish_data" => found && found["publish_data"] ? "true" : "false",
     }
   end
 
@@ -186,5 +192,15 @@ class DataIndexConfig
     return nil if value.nil? || value.strip.empty?
 
     value.strip.sub(/\A::/, "")
+  end
+
+  # "Pubid::Iso::Identifier" -> "iso". The short flavor name is what
+  # `relaton index --pubid-flavor` takes.
+  def pubid_flavor(entry)
+    klass = pubid_class(entry)
+    return "" unless klass
+
+    m = klass.match(/\APubid::(\w+)::/)
+    m ? m[1].downcase : ""
   end
 end

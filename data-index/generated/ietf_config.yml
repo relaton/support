@@ -1,0 +1,11 @@
+title: IETF Index
+description: >-
+  Combined bibliographic index of IETF RFCs, Internet-Drafts and BCP/STD/FYI series in Relaton format.
+paginate: 100
+jekyll-index:
+  favicon: 'https://www.relaton.org/favicon.ico'
+  source: 'index-v1.yaml'
+  baseurl: 'https://raw.githubusercontent.com/relaton/relaton-data-ietf/main/'
+  add_type_to_reference: true
+  pubid_class: 'Pubid::Ietf::Identifier'
+  pubid_require: 'pubid'

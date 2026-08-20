@@ -8,7 +8,7 @@
 #
 # The load-bearing invariants here are the fallbacks: the workflow passes all
 # three flags unconditionally, and Cimas syncs deploy.yml into one repo
-# (relaton-data-ietf) that configs.yml deliberately does not cover.
+# (any future data-group repo) that configs.yml does not yet cover.
 require "English" # $CHILD_STATUS
 require "shellwords"
 
@@ -80,9 +80,11 @@ RSpec.describe "DataIndexConfig branding" do
         title: "Custom", favicon: "custom.ico", description: "Custom desc",
       )
 
-      expect(branding).to eq(
+      expect(branding).to include(
         "title" => "Custom", "favicon" => "custom.ico", "description" => "Custom desc",
       )
+      expect(branding["pubid_flavor"]).to eq("iso")
+      expect(branding["publish_data"]).to eq("false")
     end
 
     it "treats an explicit blank override as unset" do
@@ -97,11 +99,18 @@ RSpec.describe "DataIndexConfig branding" do
     end
 
     it "falls back to the derived title and no branding for a repo configs.yml omits" do
-      # relaton-data-ietf gets deploy.yml from Cimas but publishes no document
-      # index, so it has no configs.yml row (see cimas_data_pages_spec.rb).
-      # Its result must match what the retired shell derivation produced.
-      expect(config.branding("relaton/relaton-data-ietf"))
-        .to eq("title" => "IETF Index", "favicon" => "", "description" => "")
+      # A data-group repo that has not yet been folded into configs.yml must
+      # still resolve without raising (the deploy step always runs branding).
+      expect(config.branding("relaton/relaton-data-nope"))
+        .to include("title" => "NOPE Index", "favicon" => "", "description" => "",
+                    "pubid_flavor" => "", "publish_data" => "false")
+    end
+
+    it "resolves ietf with publish_data and the ietf pubid flavor" do
+      branding = config.branding("relaton/relaton-data-ietf")
+      expect(branding["title"]).to eq("IETF Index")
+      expect(branding["pubid_flavor"]).to eq("ietf")
+      expect(branding["publish_data"]).to eq("true")
     end
 
     it "does not raise for an unknown repo, unlike #entry" do
@@ -162,17 +171,28 @@ RSpec.describe "DataIndexConfig branding" do
       out = `#{bin.shellescape} relaton/relaton-data-w3c 2>/dev/null`
 
       expect($CHILD_STATUS).to be_success
-      expect(parse.call(out)).to eq(
+      expect(parse.call(out)).to include(
         config.branding("relaton/relaton-data-w3c"),
       )
     end
 
     it "resolves a repo configs.yml does not cover" do
+      out = `#{bin.shellescape} relaton/relaton-data-nope 2>/dev/null`
+
+      expect($CHILD_STATUS).to be_success
+      expect(parse.call(out)).to include(
+        "title" => "NOPE Index", "favicon" => "", "description" => "",
+        "pubid_flavor" => "", "publish_data" => "false",
+      )
+    end
+
+    it "emits ietf's pubid_flavor and publish_data" do
       out = `#{bin.shellescape} relaton/relaton-data-ietf 2>/dev/null`
 
       expect($CHILD_STATUS).to be_success
-      expect(parse.call(out))
-        .to eq("title" => "IETF Index", "favicon" => "", "description" => "")
+      parsed = parse.call(out)
+      expect(parsed.fetch("pubid_flavor")).to eq("ietf")
+      expect(parsed.fetch("publish_data")).to eq("true")
     end
 
     it "applies the flags the workflow always passes, blanks included" do

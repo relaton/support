@@ -88,6 +88,20 @@ repos:
     description: >-
       Combined bibliographic index of ITU-R and ITU-T publications in Relaton
       format.
+  # Combined IETF corpus for Relaton v3 (parsed from ietf-tools'
+  # relaton-data-{rfcs,ids,rfcsubseries}). publish_data puts the corpus
+  # on the Pages site so clients fetch documents from the same origin
+  # as the machine index; the data is fully derived, so it need not
+  # live in git long-term.
+  - repo: ietf
+    display: IETF
+    source: index-v1.yaml
+    branch: main
+    pubid_class: Pubid::Ietf::Identifier
+    publish_data: true
+    description: >-
+      Combined bibliographic index of IETF RFCs, Internet-Drafts and
+      BCP/STD/FYI series in Relaton format.
   - { repo: jcgm,         display: JCGM,          source: index-v1.yaml, branch: main, pubid_class: Pubid::Jcgm::Identifier }
   - { repo: jis,          display: JIS,           source: index-v2.yaml, branch: v2,   pubid_class: Pubid::Jis::Identifier }
   - { repo: nist,         display: NIST,          source: index-v2.yaml, branch: v2,   pubid_class: Pubid::Nist::Identifier }
