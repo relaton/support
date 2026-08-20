@@ -95,6 +95,13 @@ RSpec.describe "workflow token grants" do
       },
       "gh-actions/data/check_data.yml" => { "contents" => "read" },
       "gh-actions/model/make.yml" => { "contents" => "read" },
+      # check-index.yml: the interesting one. It calls the SAME reusable workflow
+      # as deploy.yml, yet grants strictly less — because the `pages: write` job
+      # it could otherwise reach is `if:`-gated off for a pull_request ref, and a
+      # skipped job never has its request evaluated. Pinned in both directions:
+      # widening it hands every PR in the fleet the ability to publish, narrowing
+      # it breaks the pre-merge check. See the template for the full argument.
+      "gh-actions/data/check-index.yml" => { "contents" => "read" },
     }.freeze
 
     expected.each do |src, grant|

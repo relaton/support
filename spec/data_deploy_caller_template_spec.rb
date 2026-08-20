@@ -261,7 +261,7 @@ RSpec.describe "cimas-config/gh-actions/data/*.yml (the Cimas caller templates)"
     #
     # Narrowing this to `contents: read` — the reflexive "minimal permissions"
     # edit — does not fail at parse time. It fails minutes into the build, at the
-    # deploy step, in all 29 repos at once, with:
+    # deploy step, in all 30 repos at once, with:
     #
     #   The workflow is requesting 'pages: write', but is only allowed 'pages: none'.
     #

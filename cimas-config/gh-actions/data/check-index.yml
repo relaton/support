@@ -45,4 +45,25 @@ jobs:
     # branding lives in relaton/support's `data-index/configs.yml`, which
     # data-deploy.yml reads at build time — this run resolves it too, so a broken
     # configs.yml row fails the PR rather than the publish.
+    #
+    # Deliberately NARROWER than deploy.yml's grant, though both call the same
+    # reusable workflow. deploy.yml must grant the union of every scope
+    # data-deploy.yml's jobs request, including `pages: write` + `id-token: write`
+    # for its `deploy` job. Here that job cannot run at all: it is gated on
+    # `github.ref` equalling the repo's default branch, and a pull_request run's
+    # ref is `refs/pull/N/merge`. A job that is skipped is never dispatched, so
+    # its permission request is never evaluated — the union failure surfaces at
+    # the deploy step of a real build, not when the workflow graph is parsed.
+    #
+    # Which is why this is `contents: read` and must stay there: `pull_request` is
+    # the most reachable trigger in the repo, and the two scopes withheld are
+    # exactly the two that publish. Granting them here would hand every PR in
+    # every data repo the ability to deploy Pages, to buy nothing.
+    #
+    # If a synced repo's first PR ever fails with "requesting 'pages: write', but
+    # is only allowed 'pages: none'", that reading was wrong and the fix is to
+    # widen this to deploy.yml's three — not to touch the `if:` gate.
+    # Pinned by spec/workflow_permissions_spec.rb.
+    permissions:
+      contents: read
     uses: relaton/support/.github/workflows/data-deploy.yml@main
