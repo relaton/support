@@ -1,9 +1,0 @@
-title: 3GPP Index
-description: >-
-  Welcome to the 3GPP standards index site!
-paginate: 100
-jekyll-index:
-  favicon: 'https://www.relaton.org/favicon.ico'
-  source: 'index-v1.yaml'
-  baseurl: 'https://raw.githubusercontent.com/relaton/relaton-data-3gpp/v2/'
-  add_type_to_reference: true

@@ -9,6 +9,11 @@
 #               time; a 404 here is why a built site can render empty)
 #
 # Exits non-zero if any checked URL is not 200, so it doubles as a rollout gate.
+#
+# One row is a KNOWN, expected 404: `iana`, whose configs.yml `source` names
+# index-v2 (matching Relaton::Iana::INDEXFILE) while relaton-data-iana@v2 still
+# publishes index-v1 only. It clears when that repo's crawler emits index-v2.
+# Any OTHER repo's non-200 is a real regression. See data-index/README.adoc.
 # This is the operator's "confirm each site returns 200" step: run it AFTER the
 # Cimas push + _config.yml commits + Pages enablement have landed.
 #

@@ -3,134 +3,83 @@ require "data_index_config"
 RSpec.describe DataIndexConfig do
   let(:config) { described_class.load }
 
-  def jekyll_index(repo)
-    YAML.safe_load(config.render_repo(repo)).fetch("jekyll-index")
+  # configs.yml reaches the live Pages build only through #branding (run by
+  # bin/index-branding from the "Resolve branding" step of data-deploy.yml) and
+  # bin/check-data-pages's #raw_index_url. Both are asserted here through the
+  # public surface, because the rendered Jekyll _config.yml they used to be
+  # cross-checked against is gone.
+  def branding(repo)
+    config.branding("relaton/relaton-data-#{repo}")
   end
 
-  describe "#render_repo" do
-    it "renders a flat v1 flavor without pubid keys (3gpp)" do
-      parsed = YAML.safe_load(config.render_repo("3gpp"))
-      expect(parsed["title"]).to eq("3GPP Index")
-      expect(parsed["paginate"]).to eq(100)
-      ji = parsed.fetch("jekyll-index")
-      expect(ji["source"]).to eq("index-v1.yaml")
-      expect(ji["baseurl"])
-        .to eq("https://raw.githubusercontent.com/relaton/relaton-data-3gpp/v2/")
-      expect(ji["add_type_to_reference"]).to be(true)
-      expect(ji).not_to have_key("pubid_class")
-      expect(ji).not_to have_key("pubid_require")
-    end
-
-    it "renders a v2 pubid flavor with the external Identifier class (iso)" do
-      ji = jekyll_index("iso")
-      expect(ji["source"]).to eq("index-v2.yaml")
-      expect(ji["baseurl"])
-        .to eq("https://raw.githubusercontent.com/relaton/relaton-data-iso/v2/")
-      expect(ji["pubid_class"]).to eq("Pubid::Iso::Identifier")
-      expect(ji["pubid_require"]).to eq("pubid")
-    end
-
-    it "keeps pubid keys for a v1-named but pubid-structured flavor (jcgm)" do
-      ji = jekyll_index("jcgm")
-      expect(ji["source"]).to eq("index-v1.yaml")
-      expect(ji["pubid_class"]).to eq("Pubid::Jcgm::Identifier")
-      expect(ji["pubid_require"]).to eq("pubid")
-    end
-
-    it "uses index-v3 for iho" do
-      ji = jekyll_index("iho")
-      expect(ji["source"]).to eq("index-v3.yaml")
-      expect(ji["pubid_class"]).to eq("Pubid::Iho::Identifier")
-    end
-
-    it "uses the repo's real default branch in baseurl (adobe -> main)" do
-      expect(jekyll_index("adobe")["baseurl"])
-        .to eq("https://raw.githubusercontent.com/relaton/relaton-data-adobe/main/")
-    end
-
-    it "renders the iala row: v2 source, main branch, structured Pubid::Iala" do
-      ji = jekyll_index("iala")
-      expect(ji["source"]).to eq("index-v2.yaml")
-      expect(ji["baseurl"])
-        .to eq("https://raw.githubusercontent.com/relaton/relaton-data-iala/main/")
-      expect(ji["pubid_class"]).to eq("Pubid::Iala::Identifier")
+  describe "#branding" do
+    it "titles a site from `display` (3gpp)" do
+      expect(branding("3gpp")["title"]).to eq("3GPP Index")
     end
 
     it "applies the default favicon to repos without an override" do
       # The convention is the SDO's own icon where there is a stable URL for one,
-      # relaton.org otherwise. Listed explicitly so adding an override is a
-      # deliberate edit here rather than a silent change to a repo's live page.
-      default_favicon = config.defaults.fetch("favicon")
+      # so this roster grows. Adding a `favicon:` to a row means adding it here.
       overridden = %w[iana ids itu oasis w3c]
+      default_favicon = config.defaults.fetch("favicon")
+
       config.repos.reject { |e| overridden.include?(e["repo"]) }.each do |e|
-        expect(jekyll_index(e["repo"])["favicon"]).to eq(default_favicon)
+        expect(branding(e["repo"])["favicon"]).to eq(default_favicon),
+                                                 "#{e['repo']} should inherit the default favicon"
       end
+
       overridden.each do |repo|
-        expect(jekyll_index(repo)["favicon"]).not_to eq(default_favicon)
+        expect(branding(repo)["favicon"]).not_to eq(default_favicon),
+                                                 "#{repo} should carry its own favicon"
       end
     end
 
     it "honors a per-repo favicon override (w3c)" do
-      expect(jekyll_index("w3c")["favicon"])
+      expect(branding("w3c")["favicon"])
         .to eq("https://www.w3.org/assets/logos/w3c/w3c-no-bars.svg")
     end
 
     it "carries iana's branding" do
-      # Taken from the relaton-data-iana caller prepared alongside this change
-      # and not yet pushed, so these values are not live anywhere — this is a new
-      # editorial choice, not a recovery. Recorded here rather than in that
-      # caller because a `cimas sync` would drop a `with:` block without trace.
-      expect(jekyll_index("iana")["favicon"]).to eq("https://www.iana.org/favicon.ico")
-      expect(YAML.safe_load(config.render_repo("iana"))["description"])
+      # Taken from the relaton-data-iana caller prepared alongside the row and
+      # not live anywhere else — this is an editorial choice, not a recovery.
+      # Recorded here rather than in that caller because a `cimas sync` would
+      # drop a `with:` block without trace.
+      expect(branding("iana")["favicon"]).to eq("https://www.iana.org/favicon.ico")
+      expect(branding("iana")["description"])
         .to start_with("Protocol parameter registries represent the authoritative record")
     end
 
     it "honors a per-repo description override (ids)" do
-      parsed = YAML.safe_load(config.render_repo("ids"))
-      expect(parsed["description"])
+      expect(branding("ids")["description"])
         .to eq("Bibliographic data information for Internet-Drafts in Relaton format")
     end
 
     it "templates the description for repos without an override (iso)" do
-      parsed = YAML.safe_load(config.render_repo("iso"))
-      expect(parsed["description"]).to eq("Welcome to the ISO standards index site!")
+      expect(branding("iso")["description"])
+        .to eq("Welcome to the ISO standards index site!")
+    end
+  end
+
+  describe "#raw_index_url" do
+    it "joins the repo's real default branch and published index (3gpp)" do
+      expect(config.raw_index_url("3gpp"))
+        .to eq("https://raw.githubusercontent.com/relaton/relaton-data-3gpp/v2/index-v1.yaml")
     end
 
-    it "honors a per-repo pubid_require override (w3c -> relaton/w3c/pubid)" do
-      ji = jekyll_index("w3c")
-      expect(ji["pubid_class"]).to eq("Relaton::W3c::PubId")
-      expect(ji["pubid_require"]).to eq("relaton/w3c/pubid")
+    it "renders the iala row: v2 source, main branch" do
+      expect(config.raw_index_url("iala"))
+        .to eq("https://raw.githubusercontent.com/relaton/relaton-data-iala/main/index-v2.yaml")
     end
 
-    it "defaults pubid_require to 'pubid' when not overridden (iso)" do
-      expect(jekyll_index("iso")["pubid_require"]).to eq("pubid")
-    end
-
-    it "never emits a pubid_class with a leading '::' (const_get rejects it)" do
-      config.repos.each do |e|
-        ji = jekyll_index(e["repo"])
-        expect(ji["pubid_class"]).not_to start_with("::") if ji.key?("pubid_class")
-      end
-    end
-
-    it "escapes single quotes so an awkward value still yields valid YAML" do
-      cfg = described_class.new(
-        { "paginate" => 100, "pubid_require" => "pubid",
-          "favicon" => "https://x/it's.ico",
-          "baseurl_template" => "https://raw/%<repo>s/%<branch>s/",
-          "description_template" => "Welcome to the %<display>s standards index site!" },
-        [{ "repo" => "q", "display" => "Q", "source" => "index-v2.yaml",
-           "branch" => "main", "pubid_class" => "Pubid::Q::Identifier" }],
-      )
-      parsed = YAML.safe_load(cfg.render_repo("q"))
-      expect(parsed["jekyll-index"]["favicon"]).to eq("https://x/it's.ico")
-    end
-
-    it "produces valid YAML with the expected top-level keys for every repo" do
-      config.repos.each do |e|
-        parsed = YAML.safe_load(config.render_repo(e["repo"]))
-        expect(parsed.keys).to include("title", "description", "paginate", "jekyll-index")
-      end
+    it "points iana at index-v2, ahead of its data repo's publish" do
+      # `Relaton::Iana::INDEXFILE` is index-v2 in relaton/relaton@main, so this
+      # row names index-v2 too. relaton-data-iana@v2 has not published it yet
+      # (measured 2026-08-22: index-v2.yaml 404s, index-v1.yaml is 200), so
+      # bin/check-data-pages reports a KNOWN 404 for iana until that lands.
+      # Nothing automated reads this: data-deploy.yml takes only branding from
+      # configs.yml, and check-data-pages is a hand-run gate.
+      expect(config.raw_index_url("iana"))
+        .to eq("https://raw.githubusercontent.com/relaton/relaton-data-iana/v2/index-v2.yaml")
     end
   end
 
@@ -156,5 +105,39 @@ RSpec.describe DataIndexConfig do
         expect(%w[main v2 master]).to include(e["branch"])
       end
     end
+  end
+end
+
+RSpec.describe "the retired Jekyll _config.yml machinery" do
+  # support#58 (relaton/relaton#83) replaced the Jekyll Pages build with
+  # `relaton index`, which reads each data repo's own `data/` folder. These keys
+  # and this method fed only that build. Measured before their removal: no
+  # relaton-data-* repo carries a committed `_config.yml`, so the generated
+  # snapshot never reached a consumer.
+  #
+  # This guards the removal rather than the removed behavior: the keys are cheap
+  # to re-add by copying a neighbouring row, and nothing would fail if they came
+  # back dead.
+  let(:config) { DataIndexConfig.load }
+
+  it "is gone from DataIndexConfig's surface" do
+    expect(DataIndexConfig.instance_methods).not_to include(:render, :render_repo)
+  end
+
+  it "leaves no Jekyll-only key in configs.yml defaults" do
+    expect(config.defaults.keys).not_to include("paginate", "pubid_require")
+  end
+
+  it "leaves no Jekyll-only key on any repo row" do
+    config.repos.each do |entry|
+      expect(entry.keys).not_to include("pubid_class", "pubid_require"),
+                                "#{entry.fetch('repo')} still carries a pubid key"
+    end
+  end
+
+  it "ships no generator and no generated snapshot" do
+    root = File.expand_path("..", __dir__)
+    expect(File.exist?(File.join(root, "bin/gen-data-index-config"))).to be(false)
+    expect(Dir.exist?(File.join(root, "data-index/generated"))).to be(false)
   end
 end

@@ -1,9 +1,0 @@
-title: ECMA Index
-description: >-
-  Welcome to the ECMA standards index site!
-paginate: 100
-jekyll-index:
-  favicon: 'https://www.relaton.org/favicon.ico'
-  source: 'index-v1.yaml'
-  baseurl: 'https://raw.githubusercontent.com/relaton/relaton-data-ecma/v2/'
-  add_type_to_reference: true

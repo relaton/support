@@ -1,9 +1,0 @@
-title: IANA Index
-description: >-
-  Protocol parameter registries represent the authoritative record of many of the codes and numbers contained in a variety of Internet protocols.
-paginate: 100
-jekyll-index:
-  favicon: 'https://www.iana.org/favicon.ico'
-  source: 'index-v1.yaml'
-  baseurl: 'https://raw.githubusercontent.com/relaton/relaton-data-iana/v2/'
-  add_type_to_reference: true
