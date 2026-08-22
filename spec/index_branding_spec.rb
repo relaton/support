@@ -35,11 +35,15 @@ RSpec.describe "DataIndexConfig branding" do
     end
   end
 
+  # #branding is now configs.yml's only branding consumer. It used to be
+  # cross-checked here against the rendered Jekyll `_config.yml`, so that a
+  # repo's Pages title could not differ from the one its generated config
+  # claimed; that renderer is gone (support#58) and there is nothing left to
+  # drift against.
   describe "#branding" do
     it "titles a repo from its display name, not its slug" do
       # The old shell derivation upcased the slug, giving "RFCS Index" and
-      # "RFCSUBSERIES Index". configs.yml's `display` is what the retired Jekyll
-      # _config.yml actually set.
+      # "RFCSUBSERIES Index". configs.yml's `display` is the editorial name.
       expect(config.branding("relaton/relaton-data-rfcs")["title"]).to eq("RFC Index")
     end
 
@@ -126,23 +130,6 @@ RSpec.describe "DataIndexConfig branding" do
         expect(branding.values).to all(be_a(String)),
                                    "#{name} resolved a non-String: #{branding.inspect}"
         expect(branding["title"]).not_to be_empty
-      end
-    end
-
-    it "agrees with the rendered _config.yml for every repo" do
-      # configs.yml now has two consumers — this method and #render. They must
-      # not drift, or a repo's Pages title would differ from the one its
-      # generated config claims.
-      config.repos.each do |entry|
-        repo = entry.fetch("repo")
-        rendered = YAML.safe_load(config.render_repo(repo))
-        branding = config.branding("relaton/relaton-data-#{repo}")
-
-        expect(branding["title"]).to eq(rendered.fetch("title")), "title drift for #{repo}"
-        expect(branding["description"]).to eq(rendered.fetch("description").strip),
-                                           "description drift for #{repo}"
-        expect(branding["favicon"]).to eq(rendered.fetch("jekyll-index").fetch("favicon")),
-                                       "favicon drift for #{repo}"
       end
     end
   end

@@ -1,119 +1,128 @@
 ---
-# Source of truth for each relaton-data-* repo's Jekyll Pages index `_config.yml`.
+# Source of truth for the relaton-data-* GitHub Pages index sites.
 #
-# `bin/gen-data-index-config` renders one `_config.yml` per entry; a maintainer
-# commits the result into the corresponding data repo (see data-index/README.adoc).
+# Two commands read this file:
+#
+#   bin/index-branding   - resolves a repo's `title` / `favicon` / `description`
+#                          and prints them in $GITHUB_OUTPUT form. Run by the
+#                          "Resolve branding" step of
+#                          .github/workflows/data-deploy.yml, which passes them
+#                          to `relaton index`. An edit to `display`, `favicon`
+#                          or `description` changes a published page on its next
+#                          deploy — no data-repo change involved.
+#   bin/check-data-pages - checks the Pages site and the raw index URL
+#                          (`baseurl` + `source`) both return 200.
+#
+# Branding lives here, and not in each caller's `with:` block, because
+# cimas.yml maps `.github/workflows/deploy.yml` as a whole-file copy for 30
+# repos: a `with:` block is wiped on the next `cimas sync` and the site silently
+# loses its favicon and description.
 #
 # Per entry:
 #   repo        - relaton-data-<repo> (also the raw.githubusercontent path segment)
-#   display     - human name used in the title/description
-#   source      - the published INDEXFILE the current relaton consumer reads
+#   display     - human name used in the title/description; the title is always
+#                 "<display> Index", so there is no per-entry `title` key
+#   source      - the index this repo publishes TODAY. bin/check-data-pages
+#                 requires 200 from `baseurl` + `source`, so this follows the
+#                 data repo's publish rather than its consumer's expectations.
 #   branch      - the repo's real default branch (drives baseurl + Cimas target)
-#   pubid_class - external Pubid::<Flavor>::Identifier for pubid-structured indexes;
-#                 omit/blank for flat indexes whose :id is a plain string.
-#                 MUST match the `pubid_class:` the flavor passes to
-#                 Relaton::Index.find_or_create in relaton's lib/relaton/<flavor>/data_fetcher.rb.
-#                 No leading "::" — the theme plugin resolves it with Object.const_get.
 #
-# Optional per-entry overrides (fall back to the defaults/template when absent):
-#   favicon        - override defaults.favicon
-#   description     - override the templated "Welcome to the <display> ..." line
-#   pubid_require   - override defaults.pubid_require (w3c uses relaton/w3c/pubid)
+# Optional per-entry overrides (fall back to defaults when absent):
+#   favicon     - override defaults.favicon
+#   description - override the templated "Welcome to the <display> ..." line
 #
 # Favicon convention: prefer the SDO's own icon where there is a stable URL for
 # one; leave `favicon` unset to inherit defaults.favicon (relaton.org). Adding
 # one is a one-line edit here — no data-repo or workflow change.
 #
-# `display`, `favicon` and `description` are ALSO what the shared
-# .github/workflows/data-deploy.yml passes to `relaton index` — as
-# `--title "<display> Index"`, `--favicon` and `--description`, via
-# DataIndexConfig#branding and bin/index-branding. So this file, not each repo's
-# deploy.yml `with:` block, is where a data repo's Pages branding lives. (There
-# is no per-entry `title` key: the title always derives from `display`.)
-# It has to be: cimas.yml maps `.github/workflows/deploy.yml` as a whole-file
-# copy for 30 repos, so a `with:` block is wiped on the next `cimas sync` and the
-# page silently loses its favicon and description.
+# This file used to also carry `paginate`, `pubid_class` and `pubid_require` for
+# a per-repo Jekyll `_config.yml` rendered by bin/gen-data-index-config.
+# support#58 (relaton/relaton#83) replaced that build with `relaton index`, and
+# no relaton-data-* repo ever carried a committed `_config.yml`, so those keys
+# and the generator were removed. Git history holds the old `pubid_class`
+# values; the live ones are in each flavor's lib/relaton/<flavor>/data_fetcher.rb
+# in relaton/relaton.
 
 defaults:
-  paginate: 100
-  pubid_require: pubid
   favicon: 'https://www.relaton.org/favicon.ico'
   baseurl_template: 'https://raw.githubusercontent.com/relaton/relaton-data-%<repo>s/%<branch>s/'
   description_template: 'Welcome to the %<display>s standards index site!'
 
 repos:
-  - { repo: 3gpp,         display: 3GPP,          source: index-v1.yaml, branch: v2,   pubid_class: }
-  - { repo: adobe,        display: Adobe,         source: index-v2.yaml, branch: main, pubid_class: Pubid::Adobe::Identifier }
-  - { repo: bipm,         display: BIPM,          source: index-v1.yaml, branch: v2,   pubid_class: }
-  - { repo: calconnect,   display: CalConnect,    source: index-v1.yaml, branch: v2,   pubid_class: }
-  - { repo: ccsds,        display: CCSDS,         source: index-v2.yaml, branch: v2,   pubid_class: Pubid::Ccsds::Identifier }
-  - { repo: cie,          display: CIE,           source: index-v2.yaml, branch: v2,   pubid_class: Pubid::Cie::Identifier }
-  - { repo: easc,         display: EASC,          source: index-v2.yaml, branch: main, pubid_class: Pubid::Easc::Identifier }
-  - { repo: ecma,         display: ECMA,          source: index-v1.yaml, branch: v2,   pubid_class: }
-  - { repo: etsi,         display: ETSI,          source: index-v2.yaml, branch: v2,   pubid_class: Pubid::Etsi::Identifier }
-  - { repo: gost,         display: GOST,          source: index-v2.yaml, branch: main, pubid_class: Pubid::Gost::Identifier }
-  # Taken from the `with:` block of the relaton-data-iana caller prepared
-  # alongside this change (not yet pushed, so these values are not live
-  # anywhere). Recorded here rather than there because that block is exactly what
-  # a `cimas sync` would drop without trace. First flavor to follow the
-  # SDO's-own-icon convention beyond the three already-live repos.
+  - { repo: 3gpp,         display: 3GPP,          source: index-v1.yaml, branch: v2 }
+  - { repo: adobe,        display: Adobe,         source: index-v2.yaml, branch: main }
+  - { repo: bipm,         display: BIPM,          source: index-v1.yaml, branch: v2 }
+  - { repo: calconnect,   display: CalConnect,    source: index-v1.yaml, branch: v2 }
+  - { repo: ccsds,        display: CCSDS,         source: index-v2.yaml, branch: v2 }
+  - { repo: cie,          display: CIE,           source: index-v2.yaml, branch: v2 }
+  - { repo: easc,         display: EASC,          source: index-v2.yaml, branch: main }
+  - { repo: ecma,         display: ECMA,          source: index-v1.yaml, branch: v2 }
+  - { repo: etsi,         display: ETSI,          source: index-v2.yaml, branch: v2 }
+  - { repo: gost,         display: GOST,          source: index-v2.yaml, branch: main }
+  # Branding: taken from the `with:` block of the relaton-data-iana caller, and
+  # recorded here rather than there because a `cimas sync` would drop that block
+  # without trace. First flavor to follow the SDO's-own-icon convention beyond
+  # the three already-live repos.
+  #
+  # `source` LEADS the publish here, unlike every other row.
+  # Relaton::Iana::INDEXFILE is index-v2 in relaton/relaton@main, but
+  # relaton-data-iana@v2 still ships index-v1 only, so bin/check-data-pages
+  # reports a KNOWN 404 for iana until that repo's crawler emits index-v2 (see
+  # HANDOFFS/relaton__relaton-data-iana__crawler-emit-index-v1.md). Treat any
+  # OTHER repo's 404 as a real regression. Nothing automated reads this key:
+  # data-deploy.yml takes only branding from this file.
   - repo: iana
     display: IANA
-    source: index-v1.yaml
+    source: index-v2.yaml
     branch: v2
-    pubid_class:
     favicon: 'https://www.iana.org/favicon.ico'
     description: >-
       Protocol parameter registries represent the authoritative record of many of
       the codes and numbers contained in a variety of Internet protocols.
-  - { repo: iala,          display: IALA,          source: index-v2.yaml, branch: main, pubid_class: Pubid::Iala::Identifier }
-  - { repo: iec,          display: IEC,           source: index-v2.yaml, branch: v2,   pubid_class: Pubid::Iec::Identifier }
-  - { repo: ieee,         display: IEEE,          source: index-v2.yaml, branch: v2,   pubid_class: Pubid::Ieee::Identifier }
-  - { repo: iho,          display: IHO,           source: index-v3.yaml, branch: v2,   pubid_class: Pubid::Iho::Identifier }
-  - { repo: iso,          display: ISO,           source: index-v2.yaml, branch: v2,   pubid_class: Pubid::Iso::Identifier }
-  - { repo: itu-r,        display: ITU-R,         source: index-v2.yaml, branch: v2,   pubid_class: Pubid::Itu::Identifier }
+  - { repo: iala,          display: IALA,          source: index-v2.yaml, branch: main }
+  - { repo: iec,          display: IEC,           source: index-v2.yaml, branch: v2 }
+  - { repo: ieee,         display: IEEE,          source: index-v2.yaml, branch: v2 }
+  - { repo: iho,          display: IHO,           source: index-v3.yaml, branch: v2 }
+  - { repo: iso,          display: ISO,           source: index-v2.yaml, branch: v2 }
+  - { repo: itu-r,        display: ITU-R,         source: index-v2.yaml, branch: v2 }
   # The combined ITU-R + ITU-T corpus (one flat data/ folder, split by filename
   # prefix), which supersedes relaton-data-itu-r as a dataset. Both keep a row
   # for now: the relaton gem still consumes -itu-r, so retiring that site is a
   # separate consumer migration. Spelt out rather than one-lined because the
   # description has to say "both sectors" — otherwise the two ITU sites read
-  # identically. Same `pubid_class` as -itu-r: the ids serialize to the same
-  # `pubid:itu:*` shape.
+  # identically.
   - repo: itu
     display: ITU
     source: index-v2.yaml
     branch: main
-    pubid_class: Pubid::Itu::Identifier
     favicon: 'https://www.itu.int/favicon.ico'
     description: >-
       Combined bibliographic index of ITU-R and ITU-T publications in Relaton
       format.
-  - { repo: jcgm,         display: JCGM,          source: index-v1.yaml, branch: main, pubid_class: Pubid::Jcgm::Identifier }
-  - { repo: jis,          display: JIS,           source: index-v2.yaml, branch: v2,   pubid_class: Pubid::Jis::Identifier }
-  - { repo: nist,         display: NIST,          source: index-v2.yaml, branch: v2,   pubid_class: Pubid::Nist::Identifier }
-  - { repo: ogc,          display: OGC,           source: index-v1.yaml, branch: v2,   pubid_class: }
-  - { repo: oiml,         display: OIML,          source: index-v2.yaml, branch: main, pubid_class: Pubid::Oiml::Identifier }
-  - { repo: plateau,      display: PLATEAU,       source: index-v2.yaml, branch: v2,   pubid_class: Pubid::Plateau::Identifier }
-  - { repo: rfcs,         display: RFC,           source: index-v1.yaml, branch: v2,   pubid_class: }
-  - { repo: rfcsubseries, display: RFC Subseries, source: index-v1.yaml, branch: v2,   pubid_class: }
-  - { repo: xsf,          display: XSF,           source: index-v1.yaml, branch: v2,   pubid_class: }
+  - { repo: jcgm,         display: JCGM,          source: index-v1.yaml, branch: main }
+  - { repo: jis,          display: JIS,           source: index-v2.yaml, branch: v2 }
+  - { repo: nist,         display: NIST,          source: index-v2.yaml, branch: v2 }
+  - { repo: ogc,          display: OGC,           source: index-v1.yaml, branch: v2 }
+  - { repo: oiml,         display: OIML,          source: index-v2.yaml, branch: main }
+  - { repo: plateau,      display: PLATEAU,       source: index-v2.yaml, branch: v2 }
+  - { repo: rfcs,         display: RFC,           source: index-v1.yaml, branch: v2 }
+  - { repo: rfcsubseries, display: RFC Subseries, source: index-v1.yaml, branch: v2 }
+  - { repo: xsf,          display: XSF,           source: index-v1.yaml, branch: v2 }
 
-  # Already-live repos (their sites returned 200 before this generator existed).
-  # Folded in so the generator covers all 28; they carry per-repo favicon/
-  # description overrides (and w3c a non-default pubid_require). branch: v2 is
+  # Already-live repos (their sites returned 200 before this file existed).
+  # Folded in so this file covers all 30; they carry per-repo favicon/
+  # description overrides. branch: v2 is
   # each repo's real default (index-v1.yaml is served from v2).
   - repo: ids
     display: Internet-Drafts
     source: index-v1.yaml
     branch: v2
-    pubid_class:
     favicon: 'https://www.ietf.org/static/img/ietf-logo.dc9646b3c716.svg'
     description: 'Bibliographic data information for Internet-Drafts in Relaton format'
   - repo: oasis
     display: OASIS
     source: index-v1.yaml
     branch: v2
-    pubid_class:
     favicon: 'https://www.oasis-open.org/wp-content/uploads/2020/11/cropped-2-layers@3x-32x32.png'
     description: >-
       Welcome to the OASIS standards index site! This is where you can find the
@@ -124,8 +133,6 @@ repos:
     display: W3C
     source: index-v1.yaml
     branch: v2
-    pubid_class: Relaton::W3c::PubId
-    pubid_require: relaton/w3c/pubid
     favicon: 'https://www.w3.org/assets/logos/w3c/w3c-no-bars.svg'
     description: >-
       Welcome to the World Wide Web Consortium standards index site! This is where

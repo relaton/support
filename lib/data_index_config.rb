@@ -1,11 +1,21 @@
 require "yaml"
 
-# Renders the per-repo GitHub Pages index `_config.yml` for each relaton-data-*
-# repo from the single source of truth in `data-index/configs.yml`.
+# Reads `data-index/configs.yml`, the single source of truth for the
+# relaton-data-* GitHub Pages index sites.
 #
-# The rendered file is committed into the data repo itself (it is repo-owned,
-# like relaton-data-oasis/w3c/ids already are); the theme's `data-deploy.yml`
-# workflow merges it over the theme's base `_config.yml` at build time.
+# Two commands consume it:
+#
+#   bin/index-branding   -> #branding, run by the "Resolve branding" step of
+#                           .github/workflows/data-deploy.yml, which passes the
+#                           result to `relaton index` as --title/--favicon/
+#                           --description.
+#   bin/check-data-pages -> #pages_url and #raw_index_url, the rollout gate that
+#                           requires 200 from both.
+#
+# This class used to also render a Jekyll `_config.yml` per repo. support#58
+# (relaton/relaton#83) replaced that build with `relaton index`, which reads each
+# data repo's own `data/` folder, so the renderer and its `pubid_class` /
+# `pubid_require` / `paginate` inputs were removed.
 class DataIndexConfig
   DEFAULT_CONFIG_PATH =
     File.expand_path("../data-index/configs.yml", __dir__).freeze
@@ -40,11 +50,6 @@ class DataIndexConfig
     find_entry(repo) or raise ArgumentError, "unknown repo: #{repo.inspect}"
   end
 
-  # Render the `_config.yml` text for a repo name.
-  def render_repo(repo)
-    render(entry(repo))
-  end
-
   # The branding `relaton index` renders into the Pages site — title, favicon and
   # `<meta name="description">` — resolved centrally rather than passed by each
   # caller. cimas.yml maps `.github/workflows/deploy.yml` as a whole-file copy for
@@ -70,39 +75,6 @@ class DataIndexConfig
     }
   end
 
-  # Render the `_config.yml` text for a raw entry hash (merged with defaults).
-  #
-  # `favicon`, `description`, and `pubid_require` accept an optional per-entry
-  # override (used by the already-live ids/oasis/w3c, which keep their own
-  # branding + w3c's non-default `relaton/w3c/pubid` require); absent, they fall
-  # back to the shared default / templated value.
-  def render(entry)
-    lines = [
-      # Shared with #branding so a repo's Pages title cannot drift from the one
-      # its generated config claims.
-      "title: #{entry_title(entry)}",
-      "description: >-",
-      # Every line indented, not just the first: an unindented continuation line
-      # would terminate the `>-` block and make the rendered _config.yml invalid
-      # YAML. Single-line values (all of them today) are unaffected.
-      entry_description(entry).to_s.lines.map { |l| "  #{l.chomp}" }.join("\n"),
-      "paginate: #{defaults.fetch('paginate')}",
-      "jekyll-index:",
-      "  favicon: #{sq(entry_favicon(entry))}",
-      "  source: #{sq(entry.fetch('source'))}",
-      "  baseurl: #{sq(baseurl(entry))}",
-      "  add_type_to_reference: true",
-    ]
-
-    pubid = pubid_class(entry)
-    if pubid
-      lines << "  pubid_class: #{sq(pubid)}"
-      lines << "  pubid_require: #{sq(pubid_require(entry))}"
-    end
-
-    "#{lines.join("\n")}\n"
-  end
-
   # The GitHub Pages site URL for a repo (what should return 200 once the
   # rollout lands). `base` overrides the default project-pages host.
   def pages_url(repo, base: PAGES_HOST)
@@ -110,9 +82,10 @@ class DataIndexConfig
     "#{base.chomp('/')}/relaton-data-#{repo}/"
   end
 
-  # The raw index URL the theme plugin fetches at build time (`baseurl` + the
-  # published `source`). A 404 here is the usual reason a built site renders
-  # empty even when the Pages deploy itself is green.
+  # The published index a data repo serves: `baseurl` (repo + real default
+  # branch) + `source`. bin/check-data-pages requires 200 from it, so a row's
+  # `source` has to name the index that repo publishes today, not the one its
+  # relaton consumer is moving to.
   def raw_index_url(repo)
     e = entry(repo)
     "#{baseurl(e)}#{e.fetch('source')}"
@@ -154,11 +127,6 @@ class DataIndexConfig
     "#{self.class.flavor(repo).upcase} Index"
   end
 
-  # Per-entry override or the shared default pubid require (`pubid`).
-  def pubid_require(entry)
-    override(entry, "pubid_require") || defaults.fetch("pubid_require")
-  end
-
   # Read a per-entry string override, treating nil/blank as "not set".
   def override(entry, key)
     present(entry[key])
@@ -171,20 +139,5 @@ class DataIndexConfig
     return nil if value.nil? || value.to_s.strip.empty?
 
     value
-  end
-
-  # YAML single-quoted scalar with proper escaping ('' for a literal quote).
-  def sq(value)
-    "'#{value.to_s.gsub("'", "''")}'"
-  end
-
-  # Normalise the pubid class: blank -> nil (flat index), and strip any leading
-  # "::" because the theme plugin resolves the name with Object.const_get, which
-  # rejects a leading namespace separator.
-  def pubid_class(entry)
-    value = entry["pubid_class"]
-    return nil if value.nil? || value.strip.empty?
-
-    value.strip.sub(/\A::/, "")
   end
 end
