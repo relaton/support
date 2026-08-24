@@ -7,8 +7,8 @@
 # of truth for these values, and the caller template carries no `with:` at all.
 #
 # The load-bearing invariants here are the fallbacks: the workflow passes all
-# three flags unconditionally, and Cimas syncs deploy.yml into one repo
-# (relaton-data-ietf) that configs.yml deliberately does not cover.
+# three flags unconditionally, and a repo added to cimas.yml before its
+# configs.yml row lands must still resolve rather than fail its own deploy.
 require "English" # $CHILD_STATUS
 require "shellwords"
 
@@ -101,11 +101,14 @@ RSpec.describe "DataIndexConfig branding" do
     end
 
     it "falls back to the derived title and no branding for a repo configs.yml omits" do
-      # relaton-data-ietf gets deploy.yml from Cimas but publishes no document
-      # index, so it has no configs.yml row (see cimas_data_pages_spec.rb).
+      # No live repo exercises this any more: configs.yml now covers every repo
+      # Cimas syncs deploy.yml into, relaton-data-ietf included. relaton-data-sdo
+      # is a deliberate stand-in — it appears in neither file, so it stays a
+      # stable witness. The fallback stays guarded because a repo added to
+      # cimas.yml before its row lands would otherwise fail its own Pages build.
       # Its result must match what the retired shell derivation produced.
-      expect(config.branding("relaton/relaton-data-ietf"))
-        .to eq("title" => "IETF Index", "favicon" => "", "description" => "")
+      expect(config.branding("relaton/relaton-data-sdo"))
+        .to eq("title" => "SDO Index", "favicon" => "", "description" => "")
     end
 
     it "does not raise for an unknown repo, unlike #entry" do
@@ -136,7 +139,7 @@ RSpec.describe "DataIndexConfig branding" do
 
   # The unit examples above all bypass the executable the workflow actually runs.
   # Without these, renaming a method on GithubOutput or DataIndexConfig would
-  # leave the whole suite green and break the resolve step in all 30 repos.
+  # leave the whole suite green and break the resolve step in all 31 repos.
   describe "bin/index-branding" do
     bin = File.join(repo_root, "bin/index-branding")
 
@@ -155,11 +158,14 @@ RSpec.describe "DataIndexConfig branding" do
     end
 
     it "resolves a repo configs.yml does not cover" do
-      out = `#{bin.shellescape} relaton/relaton-data-ietf 2>/dev/null`
+      # Same stand-in as the unit example above: relaton-data-sdo is in neither
+      # configs.yml nor cimas.yml, so it exercises the fallback the executable
+      # must not fail on.
+      out = `#{bin.shellescape} relaton/relaton-data-sdo 2>/dev/null`
 
       expect($CHILD_STATUS).to be_success
       expect(parse.call(out))
-        .to eq("title" => "IETF Index", "favicon" => "", "description" => "")
+        .to eq("title" => "SDO Index", "favicon" => "", "description" => "")
     end
 
     it "applies the flags the workflow always passes, blanks included" do
