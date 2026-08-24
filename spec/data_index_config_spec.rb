@@ -20,7 +20,7 @@ RSpec.describe DataIndexConfig do
     it "applies the default favicon to repos without an override" do
       # The convention is the SDO's own icon where there is a stable URL for one,
       # so this roster grows. Adding a `favicon:` to a row means adding it here.
-      overridden = %w[iana ids itu oasis w3c]
+      overridden = %w[iana ids ietf itu oasis w3c]
       default_favicon = config.defaults.fetch("favicon")
 
       config.repos.reject { |e| overridden.include?(e["repo"]) }.each do |e|
@@ -84,17 +84,21 @@ RSpec.describe DataIndexConfig do
   end
 
   describe "configs.yml data" do
-    it "covers exactly the 30 repos with no duplicates" do
+    it "covers exactly the 31 repos with no duplicates" do
       repos = config.repos.map { |e| e["repo"] }
-      expect(repos.size).to eq(30)
-      expect(repos.uniq.size).to eq(30)
+      expect(repos.size).to eq(31)
+      expect(repos.uniq.size).to eq(31)
       expect(repos).to include("iso", "ieee", "jis", "adobe", "easc", "gost", "jcgm", "oiml", "iala")
       expect(repos).to include("ids", "oasis", "w3c") # already-live, folded in
       # Both ITU rows: `itu` is the combined ITU-R + ITU-T corpus, `itu-r` the
       # ITU-R-only repo the relaton gem still consumes. Neither is a typo for
       # the other, and dropping either silently 404s a site.
       expect(repos).to include("itu", "itu-r")
-      expect(repos).not_to include("sdo", "ietf", "misc")
+      # ietf was the one repo Cimas synced deploy.yml into with no row here. It
+      # publishes an index since migrating to Relaton::Ietf::DataFetcher, so the
+      # exclusion is lifted and this file now covers the whole synced fleet.
+      expect(repos).to include("ietf")
+      expect(repos).not_to include("sdo", "misc")
     end
 
     it "gives every entry the required fields" do

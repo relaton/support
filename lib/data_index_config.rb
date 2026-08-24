@@ -53,16 +53,19 @@ class DataIndexConfig
   # The branding `relaton index` renders into the Pages site — title, favicon and
   # `<meta name="description">` — resolved centrally rather than passed by each
   # caller. cimas.yml maps `.github/workflows/deploy.yml` as a whole-file copy for
-  # 30 repos, so a `with:` block carrying these values is wiped on the next
+  # 31 repos, so a `with:` block carrying these values is wiped on the next
   # `cimas sync` and the site silently loses them.
   #
   # Precedence: an explicit non-blank argument (a caller's workflow input) beats
   # this repo's configs.yml entry, which beats the shared default.
   #
-  # Deliberately never raises, unlike #entry: Cimas syncs deploy.yml into
-  # relaton-data-ietf, which publishes no document index and so has no configs.yml
-  # row. An unknown repo falls back to what the workflow's own shell derivation
-  # produced before this method existed — "<FLAVOR> Index" and no branding.
+  # Deliberately never raises, unlike #entry. Every repo Cimas syncs deploy.yml
+  # into now carries a configs.yml row, so nothing exercises the fallback today —
+  # it is a safety net, not a live path. It stays because a repo added to
+  # cimas.yml before its row lands would otherwise fail its own Pages build on a
+  # missing row. Such a repo falls back to what the workflow's own shell
+  # derivation produced before this method existed — "<FLAVOR> Index" and no
+  # branding. spec/cimas_data_pages_spec.rb is what makes the gap loud.
   #
   # => { "title" => String, "favicon" => String, "description" => String }
   def branding(repo, title: nil, favicon: nil, description: nil)
@@ -122,7 +125,8 @@ class DataIndexConfig
   end
 
   # What the workflow's retired shell step produced for a repo configs.yml does
-  # not cover: the slug, upcased. Keeps relaton-data-ietf building unchanged.
+  # not cover: the slug, upcased. Keeps such a repo building unchanged rather
+  # than failing its deploy on a missing row.
   def derived_title(repo)
     "#{self.class.flavor(repo).upcase} Index"
   end

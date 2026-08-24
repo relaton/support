@@ -14,7 +14,7 @@
 #                          (`baseurl` + `source`) both return 200.
 #
 # Branding lives here, and not in each caller's `with:` block, because
-# cimas.yml maps `.github/workflows/deploy.yml` as a whole-file copy for 30
+# cimas.yml maps `.github/workflows/deploy.yml` as a whole-file copy for 31
 # repos: a `with:` block is wiped on the next `cimas sync` and the site silently
 # loses its favicon and description.
 #
@@ -99,6 +99,30 @@ repos:
     description: >-
       Combined bibliographic index of ITU-R and ITU-T publications in Relaton
       format.
+  # Cimas has always synced deploy.yml into relaton-data-ietf. Until that repo
+  # migrated to `Relaton::Ietf::DataFetcher` it published no index, so it
+  # deliberately had no row here and its site fell back to a bare "IETF Index"
+  # with no favicon and no description. The crawl now commits index-v1.yaml
+  # (177,230 records) on main, so the site has a real index and this row gives
+  # it an identity.
+  #
+  # `source` FOLLOWS the publish here, unlike the iana row above. relaton-ietf's
+  # DataFetcher is moving index-v1 -> index-v2 as a straight replacement, never
+  # both; lib/relaton_ietf/data_fetcher.rb still declares index-v1. Flip this
+  # key only after a crawl has committed index-v2.yaml, or bin/check-data-pages
+  # reports a 404.
+  #
+  # The rfcs/rfcsubseries/ids rows below stay: every released relaton reads
+  # index-v1 from those three repos. Retire them the staged way the itu-r -> itu
+  # comment above describes, once relaton's Ietf::Scraper reads this index.
+  - repo: ietf
+    display: IETF
+    source: index-v1.yaml
+    branch: main
+    favicon: 'https://www.ietf.org/static/img/ietf-logo.dc9646b3c716.svg'
+    description: >-
+      Bibliographic data for IETF RFCs, Internet-Drafts and RFC sub-series in
+      Relaton format
   - { repo: jcgm,         display: JCGM,          source: index-v1.yaml, branch: main }
   - { repo: jis,          display: JIS,           source: index-v2.yaml, branch: v2 }
   - { repo: nist,         display: NIST,          source: index-v2.yaml, branch: v2 }
@@ -110,7 +134,7 @@ repos:
   - { repo: xsf,          display: XSF,           source: index-v1.yaml, branch: v2 }
 
   # Already-live repos (their sites returned 200 before this file existed).
-  # Folded in so this file covers all 30; they carry per-repo favicon/
+  # Folded in so this file covers all 31; they carry per-repo favicon/
   # description overrides. branch: v2 is
   # each repo's real default (index-v1.yaml is served from v2).
   - repo: ids

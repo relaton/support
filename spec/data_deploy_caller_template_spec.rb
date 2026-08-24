@@ -63,8 +63,9 @@ RSpec.describe "cimas-config/gh-actions/data/*.yml (the Cimas caller templates)"
     it "accepts every default branch name in use across the fleet" do
       # `workflow_run`'s branch filter matches the *triggering* run's branch, so
       # this list has to cover every default branch the synced repos actually
-      # use (23 of the 30 are on v2, six on main, one on master) for the file to
-      # stay repo-agnostic. It is only a pre-filter: a repo carrying more than
+      # use (23 of the 31 are on v2, eight on main; none is on master today, and
+      # the list keeps that name because over-covering costs nothing) for the file
+      # to stay repo-agnostic. It is only a pre-filter: a repo carrying more than
       # one of those names lets a crawl on a dormant branch through, so
       # data-deploy.yml gates on `workflow_run.head_branch` being the repo's
       # real default branch, and publication on the run's own ref.
@@ -117,7 +118,7 @@ RSpec.describe "cimas-config/gh-actions/data/*.yml (the Cimas caller templates)"
     it "leaves no push or pull_request trigger in Deploy or Crawler" do
       # Stated separately from the two `contain_exactly` examples above because
       # this is the invariant that fails silently: re-adding either trigger just
-      # burns Actions minutes fleet-wide, in 30 repos at once, with nothing red.
+      # burns Actions minutes fleet-wide, in 31 repos at once, with nothing red.
       #
       # Note what re-adding `pull_request` *here* would not be: a restored
       # pre-merge check. That lives in check-index.yml, which reaches the same
@@ -168,7 +169,7 @@ RSpec.describe "cimas-config/gh-actions/data/*.yml (the Cimas caller templates)"
       # nothing user-visible to notice either.
       expect(File.exist?(check_index_path)).to be(true),
                                                "the pre-merge check caller is missing; without it a PR " \
-                                               "touching data/ runs no build at all in 30 repos"
+                                               "touching data/ runs no build at all in 31 repos"
     end
 
     it "triggers on pull requests and nothing else" do
@@ -235,7 +236,7 @@ RSpec.describe "cimas-config/gh-actions/data/*.yml (the Cimas caller templates)"
 
     it "passes no inputs at all" do
       # THE reason branding moved into data-index/configs.yml. cimas.yml maps
-      # this file into 30 repos as a whole-file copy, so anything in a `with:`
+      # this file into 31 repos as a whole-file copy, so anything in a `with:`
       # here is either wrong for the other 29 or — once a repo hand-edits it —
       # silently reverted by the next `cimas sync`. Branding failed silently (the
       # page just loses its favicon), which is why it moved to configs.yml.
@@ -261,7 +262,7 @@ RSpec.describe "cimas-config/gh-actions/data/*.yml (the Cimas caller templates)"
     #
     # Narrowing this to `contents: read` — the reflexive "minimal permissions"
     # edit — does not fail at parse time. It fails minutes into the build, at the
-    # deploy step, in all 30 repos at once, with:
+    # deploy step, in all 31 repos at once, with:
     #
     #   The workflow is requesting 'pages: write', but is only allowed 'pages: none'.
     #

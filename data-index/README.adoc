@@ -13,7 +13,8 @@ directory's `configs.yml` for the page's `title`, `favicon` and `description`.
 This directory once also generated a per-repo Jekyll `_config.yml`
 (`bin/gen-data-index-config` into `generated/`). support#58
 (relaton/relaton#83) replaced the Jekyll build with `relaton index`, and a sweep
-of all 30 repos found that none had ever carried a committed `_config.yml`, so
+of every `relaton-data-*` repo found that none had ever carried a committed
+`_config.yml`, so
 the generator, its snapshot and the `paginate` / `pubid_class` / `pubid_require`
 keys that fed it were removed. Git history holds them if they are ever wanted.
 ====
@@ -152,7 +153,7 @@ for r in $(gh repo list relaton --limit 200 --json name -q '.[].name' | grep '^r
 done
 ----
 
-PR-time validation is `check-index.yml`, mapped into all 30 repos: a PR touching
+PR-time validation is `check-index.yml`, mapped into all 31 repos: a PR touching
 `data/**` builds the whole index and fails if it does not parse. `check_data.yml`
 keeps its own `push`/`pull_request` triggers on top of that in 3 repos (bipm,
 iho, iso) as a cheaper schema check.
@@ -171,7 +172,7 @@ a run carrying fresh data.
 
 [NOTE]
 ====
-Cimas replaces `deploy.yml` and `check-index.yml` wholesale in all 30 mapped
+Cimas replaces `deploy.yml` and `check-index.yml` wholesale in all 31 mapped
 repos, so nothing per-repo can live in a caller's `with:` block and survive. That
 is also why a run's *kind* is derived centrally from its ref rather than from a
 `validate-only` input: the input would have to arrive in exactly that block.
@@ -308,10 +309,16 @@ Small flavors (bipm, iana) finish in under two minutes.
 
 == Status (verified 2026-08-03)
 
-`configs.yml` covers *30 repos*: the 26 rollout targets plus the 3 already-live
+`configs.yml` covers *31 repos*: the 26 rollout targets plus the 3 already-live
 (*ids, oasis, w3c*), folded in so this file is the single source for every site,
-plus *iala* (added 2026-08-17; `main`-default, `index-v2.yaml`). The 3 live ones
-carry per-repo `favicon`/`description` overrides.
+plus *iala* (added 2026-08-17; `main`-default, `index-v2.yaml`) and *ietf* (added
+2026-08-24). The 3 live ones carry per-repo `favicon`/`description` overrides.
+
+`ietf` closes the last gap between this file and `cimas.yml`: Cimas had always
+synced `deploy.yml` into `relaton-data-ietf`, but the repo published no index, so
+it carried no row and its site fell back to a bare `IETF Index`. It now crawls
+with `Relaton::Ietf::DataFetcher`, which commits `index-v1.yaml` (177,230
+records) on `main`. Every repo Cimas syncs `deploy.yml` into now has a row.
 
 [WARNING]
 ====
@@ -357,7 +364,7 @@ Re-check current state any time with:
 
 [source,sh]
 ----
-bin/check-data-pages              # site + raw-index for all 30
+bin/check-data-pages              # site + raw-index for all 31
 bin/check-data-pages --site-only  # just the Pages sites (the 404s to fix)
 ----
 
@@ -387,7 +394,7 @@ cimas open-prs -f $CIMAS_CONFIG -r $CIMAS_WD -b data-pages -m 'Pages deploy' -g 
 ----
 +
 NOTE: `check-index.yml` triggers on `pull_request`, so `open-prs` starts a
-`Check index` run in every repo it opens a PR in — ~30 full builds at once,
+`Check index` run in every repo it opens a PR in — ~31 full builds at once,
 2–3 min each on the largest flavors. That is a free fleet-wide smoke test of the
 build, not a loop. Inspect one repo's synced tree in `$CIMAS_WD` before pushing
 all of them: for a target that has never had this file, the sync is an *add*.

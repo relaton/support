@@ -64,7 +64,7 @@ RSpec.describe "configs.yml <-> cimas.yml consistency" do
         # The inverse of the guard this example replaces. `relaton index` needs
         # no Gemfile: `source: gem` installs relaton-cli, `source: git` writes
         # $RUNNER_TEMP/Gemfile.index and points BUNDLE_GEMFILE at it. A restored
-        # mapping would re-create the retired Jekyll bundle in 30 repos and
+        # mapping would re-create the retired Jekyll bundle in 31 repos and
         # re-establish the "this repo builds with Jekyll" signal the migration
         # removes — harmless to the build, which is exactly why it would stick.
         expect(repositories.fetch(cimas_key).fetch("files")).not_to have_key("Gemfile.deploy")
@@ -74,13 +74,14 @@ RSpec.describe "configs.yml <-> cimas.yml consistency" do
 
   it "every relaton-data-* repo in the `data` group with a deploy.yml is covered by configs.yml" do
     # The reverse direction: a data repo that Cimas pushes deploy.yml into but that
-    # has no configs.yml row would deploy the theme with no per-repo _config.yml.
-    # Excludes are the deliberate non-index repos (see data-pages-rollout hand-off).
+    # has no configs.yml row deploys a site with no title, favicon or description.
     known = configs.repos.map { |e| "relaton-data-#{e['repo']}" }
-    # ietf gets deploy.yml but is deliberately not a Pages index (no document
-    # index published); every other data-group repo is covered by configs.yml,
-    # including the already-live ids/oasis/w3c now folded in.
-    excluded = %w[relaton-data-ietf]
+    # Empty, and that is the point: configs.yml now covers every data-group repo
+    # that gets deploy.yml. relaton-data-ietf was the last exclusion — it had no
+    # document index until it migrated to Relaton::Ietf::DataFetcher, which
+    # commits index-v1.yaml as it crawls. The list stays so a future deliberate
+    # non-index repo has somewhere to go, and so removing one is a visible edit.
+    excluded = %w[]
     deploys_pages =
       data_group.select do |name|
         files = repositories.fetch(name, {}).fetch("files", nil) || {}
@@ -93,11 +94,11 @@ RSpec.describe "configs.yml <-> cimas.yml consistency" do
   end
 
   it "syncs deploy.yml and check-index.yml together, or neither" do
-    # Not folded into the per-repo examples above: those iterate configs.yml,
-    # which deliberately has no relaton-data-ietf row (it gets deploy.yml but
-    # publishes no document index). A repo that merges data with no PR-time
-    # build is exactly the gap this file exists to make loud, whether or not it
-    # has a page — so drive this one off cimas.yml instead.
+    # Not folded into the per-repo examples above: those iterate configs.yml, so
+    # they are blind to a repo cimas.yml already syncs but configs.yml has not
+    # caught up with. A repo that merges data with no PR-time build is exactly
+    # the gap this file exists to make loud, whether or not it has a row yet —
+    # so drive this one off cimas.yml instead.
     #
     # Both directions, because both halves fail silently and the per-repo
     # examples above can only see repos configs.yml already knows about. A repo
@@ -120,7 +121,7 @@ RSpec.describe "configs.yml <-> cimas.yml consistency" do
   end
 
   # The failure mode that made this whole change necessary is entirely silent: a
-  # per-repo value in a Cimas-synced template is copied verbatim into 30 repos,
+  # per-repo value in a Cimas-synced template is copied verbatim into 31 repos,
   # and a per-repo value hand-added to a *synced destination* is reverted on the
   # next sync with nothing red in CI. These two guards make either a test
   # failure, for every template cimas.yml syncs — not just deploy.yml.

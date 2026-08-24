@@ -165,7 +165,7 @@ RSpec.describe ".github/workflows/data-deploy.yml" do
   describe "resolving branding from relaton/support" do
     it "checks out relaton/support, the branding source of truth" do
       # Branding cannot live in the caller: cimas.yml maps
-      # .github/workflows/deploy.yml as a whole-file copy for 30 repos, so a
+      # .github/workflows/deploy.yml as a whole-file copy for 31 repos, so a
       # `with:` block is wiped on the next sync and the page silently loses its
       # favicon and description.
       expect(support_checkout).not_to be_nil
