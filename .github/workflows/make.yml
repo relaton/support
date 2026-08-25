@@ -15,8 +15,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: metanorma/metanorma-build-scripts/plantuml-setup-action@main
-
       # workaround for https://github.com/actions/runner-images/issues/37
       - if: matrix.os == 'ubuntu-latest'
         run: |
