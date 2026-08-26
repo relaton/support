@@ -5,7 +5,7 @@ RSpec.describe DataIndexConfig do
 
   # configs.yml reaches the live Pages build only through #branding (run by
   # bin/index-branding from the "Resolve branding" step of data-deploy.yml) and
-  # bin/check-data-pages's #raw_index_url. Both are asserted here through the
+  # bin/check-data-pages's #raw_index_urls. Both are asserted here through the
   # public surface, because the rendered Jekyll _config.yml they used to be
   # cross-checked against is gone.
   def branding(repo)
@@ -60,26 +60,87 @@ RSpec.describe DataIndexConfig do
     end
   end
 
-  describe "#raw_index_url" do
-    it "joins the repo's real default branch and published index (3gpp)" do
-      expect(config.raw_index_url("3gpp"))
-        .to eq("https://raw.githubusercontent.com/relaton/relaton-data-3gpp/v2/index-v1.yaml")
+  describe "#raw_index_urls" do
+    # configs.yml names no index file. Which one a repo publishes is a fact on
+    # raw.githubusercontent.com, so bin/check-data-pages probes the candidates
+    # newest-first and takes the first 200 rather than reading a hand-kept key.
+    it "offers every index name on the repo's real default branch (3gpp -> v2)" do
+      expect(config.raw_index_urls("3gpp")).to eq(
+        %w[
+          https://raw.githubusercontent.com/relaton/relaton-data-3gpp/v2/index-v3.yaml
+          https://raw.githubusercontent.com/relaton/relaton-data-3gpp/v2/index-v2.yaml
+          https://raw.githubusercontent.com/relaton/relaton-data-3gpp/v2/index-v1.yaml
+        ],
+      )
     end
 
-    it "renders the iala row: v2 source, main branch" do
-      expect(config.raw_index_url("iala"))
-        .to eq("https://raw.githubusercontent.com/relaton/relaton-data-iala/main/index-v2.yaml")
+    it "uses the repo's own default branch (iala -> main)" do
+      expect(config.raw_index_urls("iala"))
+        .to all(start_with("https://raw.githubusercontent.com/relaton/relaton-data-iala/main/"))
     end
 
-    it "points iana at index-v2, ahead of its data repo's publish" do
-      # `Relaton::Iana::INDEXFILE` is index-v2 in relaton/relaton@main, so this
-      # row names index-v2 too. relaton-data-iana@v2 has not published it yet
-      # (measured 2026-08-22: index-v2.yaml 404s, index-v1.yaml is 200), so
-      # bin/check-data-pages reports a KNOWN 404 for iana until that lands.
-      # Nothing automated reads this: data-deploy.yml takes only branding from
-      # configs.yml, and check-data-pages is a hand-run gate.
-      expect(config.raw_index_url("iana"))
-        .to eq("https://raw.githubusercontent.com/relaton/relaton-data-iana/v2/index-v2.yaml")
+    it "orders the candidates newest first" do
+      # The order is the whole safeguard, so pin it. A repo mid-migration can
+      # serve two names at once — relaton-data-bipm serves index-v1 and
+      # index-v2 today — and probing oldest-first would report the one it is
+      # retiring. The list is the same for every repo, so any one shows it.
+      expect(config.raw_index_urls("iho").map { |u| u.split("/").last })
+        .to eq(%w[index-v3.yaml index-v2.yaml index-v1.yaml])
+    end
+
+    it "raises for an unknown repo" do
+      expect { config.raw_index_urls("nope") }.to raise_error(ArgumentError, /unknown repo/)
+    end
+  end
+
+  describe "#first_live_index" do
+    # The choosing logic bin/check-data-pages runs, with the HTTP supplied by the
+    # caller so the suite stays offline. The executable passes its own
+    # http_status; here a hash stands in for the fleet's real responses.
+    def pick(statuses)
+      config.first_live_index("bipm") { |url| statuses.fetch(url.split("/").last) }
+    end
+
+    it "takes the newest index a repo serves, not the oldest" do
+      # What relaton-data-bipm looks like today: it publishes both.
+      status, url = pick("index-v3.yaml" => 404, "index-v2.yaml" => 200, "index-v1.yaml" => 200)
+
+      expect(status).to eq(200)
+      expect(url).to end_with("/index-v2.yaml")
+    end
+
+    it "stops at the first 200 rather than probing the rest" do
+      probed = []
+      status, = config.first_live_index("bipm") do |url|
+        probed << url.split("/").last
+        200
+      end
+
+      expect(status).to eq(200)
+      expect(probed).to eq(%w[index-v3.yaml])
+    end
+
+    it "finds an index no row could have named (ietf moved v1 -> v2)" do
+      status, url = pick("index-v3.yaml" => 404, "index-v2.yaml" => 200, "index-v1.yaml" => 404)
+
+      expect(status).to eq(200)
+      expect(url).to end_with("/index-v2.yaml")
+    end
+
+    it "reports the last candidate when a repo serves none" do
+      # Not an assertion that the repo should serve index-v1: it is simply the
+      # last status the probe saw, so the caller has one to print.
+      # bin/check-data-pages prints the full candidate list alongside it.
+      status, url = pick("index-v3.yaml" => 404, "index-v2.yaml" => 404, "index-v1.yaml" => 404)
+
+      expect(status).to eq(404)
+      expect(url).to end_with("/index-v1.yaml")
+    end
+
+    it "does not treat a non-200 such as a 403 as live" do
+      status, = pick("index-v3.yaml" => 403, "index-v2.yaml" => 403, "index-v1.yaml" => 403)
+
+      expect(status).to eq(403)
     end
   end
 
@@ -105,9 +166,19 @@ RSpec.describe DataIndexConfig do
       config.repos.each do |e|
         expect(e["repo"]).to be_a(String)
         expect(e["display"]).to be_a(String)
-        expect(e["source"]).to match(/\Aindex-v[123]\.yaml\z/)
         expect(%w[main v2 master]).to include(e["branch"])
       end
+    end
+
+    it "names no index file, so no row can drift from what its repo publishes" do
+      # `source:` used to pin the index each repo served. It was a hand-copied
+      # echo of a fact the remote already holds, and it drifted twice: iana led
+      # its publish, ietf followed one that had been deleted. The checker now
+      # discovers the index, so the key must not creep back.
+      carrying = config.repos.select { |e| e.key?("source") }.map { |e| e["repo"] }
+
+      expect(carrying).to be_empty,
+                          "these rows still carry a `source` key: #{carrying.join(', ')}"
     end
   end
 end

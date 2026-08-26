@@ -10,8 +10,10 @@
 #                          to `relaton index`. An edit to `display`, `favicon`
 #                          or `description` changes a published page on its next
 #                          deploy — no data-repo change involved.
-#   bin/check-data-pages - checks the Pages site and the raw index URL
-#                          (`baseurl` + `source`) both return 200.
+#   bin/check-data-pages - checks the Pages site returns 200, and that the repo
+#                          serves one of DataIndexConfig::INDEX_FILES under
+#                          `baseurl`. It probes those names newest-first; this
+#                          file does not say which one a repo publishes.
 #
 # Branding lives here, and not in each caller's `with:` block, because
 # cimas.yml maps `.github/workflows/deploy.yml` as a whole-file copy for 31
@@ -22,9 +24,6 @@
 #   repo        - relaton-data-<repo> (also the raw.githubusercontent path segment)
 #   display     - human name used in the title/description; the title is always
 #                 "<display> Index", so there is no per-entry `title` key
-#   source      - the index this repo publishes TODAY. bin/check-data-pages
-#                 requires 200 from `baseurl` + `source`, so this follows the
-#                 data repo's publish rather than its consumer's expectations.
 #   branch      - the repo's real default branch (drives baseurl + Cimas target)
 #
 # Optional per-entry overrides (fall back to defaults when absent):
@@ -42,6 +41,12 @@
 # and the generator were removed. Git history holds the old `pubid_class`
 # values; the live ones are in each flavor's lib/relaton/<flavor>/data_fetcher.rb
 # in relaton/relaton.
+#
+# It also used to carry `source`, naming the index each repo published. That was
+# a hand-copied echo of a fact raw.githubusercontent.com already holds, and it
+# drifted in both directions: `iana` named an index its repo had not published
+# yet, `ietf` named one its repo had since deleted. bin/check-data-pages now
+# discovers the index, so there is nothing here to keep in step with a crawl.
 
 defaults:
   favicon: 'https://www.relaton.org/favicon.ico'
@@ -49,42 +54,33 @@ defaults:
   description_template: 'Welcome to the %<display>s standards index site!'
 
 repos:
-  - { repo: 3gpp,         display: 3GPP,          source: index-v1.yaml, branch: v2 }
-  - { repo: adobe,        display: Adobe,         source: index-v2.yaml, branch: main }
-  - { repo: bipm,         display: BIPM,          source: index-v1.yaml, branch: v2 }
-  - { repo: calconnect,   display: CalConnect,    source: index-v1.yaml, branch: v2 }
-  - { repo: ccsds,        display: CCSDS,         source: index-v2.yaml, branch: v2 }
-  - { repo: cie,          display: CIE,           source: index-v2.yaml, branch: v2 }
-  - { repo: easc,         display: EASC,          source: index-v2.yaml, branch: main }
-  - { repo: ecma,         display: ECMA,          source: index-v1.yaml, branch: v2 }
-  - { repo: etsi,         display: ETSI,          source: index-v2.yaml, branch: v2 }
-  - { repo: gost,         display: GOST,          source: index-v2.yaml, branch: main }
+  - { repo: 3gpp,         display: 3GPP,          branch: v2 }
+  - { repo: adobe,        display: Adobe,         branch: main }
+  - { repo: bipm,         display: BIPM,          branch: v2 }
+  - { repo: calconnect,   display: CalConnect,    branch: v2 }
+  - { repo: ccsds,        display: CCSDS,         branch: v2 }
+  - { repo: cie,          display: CIE,           branch: v2 }
+  - { repo: easc,         display: EASC,          branch: main }
+  - { repo: ecma,         display: ECMA,          branch: v2 }
+  - { repo: etsi,         display: ETSI,          branch: v2 }
+  - { repo: gost,         display: GOST,          branch: main }
   # Branding: taken from the `with:` block of the relaton-data-iana caller, and
   # recorded here rather than there because a `cimas sync` would drop that block
   # without trace. First flavor to follow the SDO's-own-icon convention beyond
   # the three already-live repos.
-  #
-  # `source` LEADS the publish here, unlike every other row.
-  # Relaton::Iana::INDEXFILE is index-v2 in relaton/relaton@main, but
-  # relaton-data-iana@v2 still ships index-v1 only, so bin/check-data-pages
-  # reports a KNOWN 404 for iana until that repo's crawler emits index-v2 (see
-  # HANDOFFS/relaton__relaton-data-iana__crawler-emit-index-v1.md). Treat any
-  # OTHER repo's 404 as a real regression. Nothing automated reads this key:
-  # data-deploy.yml takes only branding from this file.
   - repo: iana
     display: IANA
-    source: index-v2.yaml
     branch: v2
     favicon: 'https://www.iana.org/favicon.ico'
     description: >-
       Protocol parameter registries represent the authoritative record of many of
       the codes and numbers contained in a variety of Internet protocols.
-  - { repo: iala,          display: IALA,          source: index-v2.yaml, branch: main }
-  - { repo: iec,          display: IEC,           source: index-v2.yaml, branch: v2 }
-  - { repo: ieee,         display: IEEE,          source: index-v2.yaml, branch: v2 }
-  - { repo: iho,          display: IHO,           source: index-v3.yaml, branch: v2 }
-  - { repo: iso,          display: ISO,           source: index-v2.yaml, branch: v2 }
-  - { repo: itu-r,        display: ITU-R,         source: index-v2.yaml, branch: v2 }
+  - { repo: iala,         display: IALA,          branch: main }
+  - { repo: iec,          display: IEC,           branch: v2 }
+  - { repo: ieee,         display: IEEE,          branch: v2 }
+  - { repo: iho,          display: IHO,           branch: v2 }
+  - { repo: iso,          display: ISO,           branch: v2 }
+  - { repo: itu-r,        display: ITU-R,         branch: v2 }
   # The combined ITU-R + ITU-T corpus (one flat data/ folder, split by filename
   # prefix), which supersedes relaton-data-itu-r as a dataset. Both keep a row
   # for now: the relaton gem still consumes -itu-r, so retiring that site is a
@@ -93,7 +89,6 @@ repos:
   # identically.
   - repo: itu
     display: ITU
-    source: index-v2.yaml
     branch: main
     favicon: 'https://www.itu.int/favicon.ico'
     description: >-
@@ -102,36 +97,34 @@ repos:
   # Cimas has always synced deploy.yml into relaton-data-ietf. Until that repo
   # migrated to `Relaton::Ietf::DataFetcher` it published no index, so it
   # deliberately had no row here and its site fell back to a bare "IETF Index"
-  # with no favicon and no description. The crawl now commits index-v1.yaml
-  # (177,230 records) on main, so the site has a real index and this row gives
-  # it an identity.
+  # with no favicon and no description. It crawls on main now, so the site has a
+  # real index and this row gives it an identity.
   #
-  # `source` FOLLOWS the publish here, unlike the iana row above. relaton-ietf's
-  # DataFetcher is moving index-v1 -> index-v2 as a straight replacement, never
-  # both; lib/relaton_ietf/data_fetcher.rb still declares index-v1. Flip this
-  # key only after a crawl has committed index-v2.yaml, or bin/check-data-pages
-  # reports a 404.
+  # That crawl publishes the pubid-structured index-v2 and deleted index-v1: the
+  # monorepo's lib/relaton/ietf/data_fetcher.rb declares INDEXFILE_V2, and the
+  # migration was a straight replacement, never a dual publish. (The retired
+  # relaton-ietf gem's lib/relaton_ietf/data_fetcher.rb is the one that still
+  # names index-v1; relaton-data-ietf does not use it.)
   #
   # The rfcs/rfcsubseries/ids rows below stay: every released relaton reads
   # index-v1 from those three repos. Retire them the staged way the itu-r -> itu
   # comment above describes, once relaton's Ietf::Scraper reads this index.
   - repo: ietf
     display: IETF
-    source: index-v1.yaml
     branch: main
     favicon: 'https://www.ietf.org/static/img/ietf-logo.dc9646b3c716.svg'
     description: >-
       Bibliographic data for IETF RFCs, Internet-Drafts and RFC sub-series in
       Relaton format
-  - { repo: jcgm,         display: JCGM,          source: index-v1.yaml, branch: main }
-  - { repo: jis,          display: JIS,           source: index-v2.yaml, branch: v2 }
-  - { repo: nist,         display: NIST,          source: index-v2.yaml, branch: v2 }
-  - { repo: ogc,          display: OGC,           source: index-v1.yaml, branch: v2 }
-  - { repo: oiml,         display: OIML,          source: index-v2.yaml, branch: main }
-  - { repo: plateau,      display: PLATEAU,       source: index-v2.yaml, branch: v2 }
-  - { repo: rfcs,         display: RFC,           source: index-v1.yaml, branch: v2 }
-  - { repo: rfcsubseries, display: RFC Subseries, source: index-v1.yaml, branch: v2 }
-  - { repo: xsf,          display: XSF,           source: index-v1.yaml, branch: v2 }
+  - { repo: jcgm,         display: JCGM,          branch: main }
+  - { repo: jis,          display: JIS,           branch: v2 }
+  - { repo: nist,         display: NIST,          branch: v2 }
+  - { repo: ogc,          display: OGC,           branch: v2 }
+  - { repo: oiml,         display: OIML,          branch: main }
+  - { repo: plateau,      display: PLATEAU,       branch: v2 }
+  - { repo: rfcs,         display: RFC,           branch: v2 }
+  - { repo: rfcsubseries, display: RFC Subseries, branch: v2 }
+  - { repo: xsf,          display: XSF,           branch: v2 }
 
   # Already-live repos (their sites returned 200 before this file existed).
   # Folded in so this file covers all 31; they carry per-repo favicon/
@@ -139,13 +132,11 @@ repos:
   # each repo's real default (index-v1.yaml is served from v2).
   - repo: ids
     display: Internet-Drafts
-    source: index-v1.yaml
     branch: v2
     favicon: 'https://www.ietf.org/static/img/ietf-logo.dc9646b3c716.svg'
     description: 'Bibliographic data information for Internet-Drafts in Relaton format'
   - repo: oasis
     display: OASIS
-    source: index-v1.yaml
     branch: v2
     favicon: 'https://www.oasis-open.org/wp-content/uploads/2020/11/cropped-2-layers@3x-32x32.png'
     description: >-
@@ -155,7 +146,6 @@ repos:
       help you solve your business and technical challenges!
   - repo: w3c
     display: W3C
-    source: index-v1.yaml
     branch: v2
     favicon: 'https://www.w3.org/assets/logos/w3c/w3c-no-bars.svg'
     description: >-
