@@ -9,8 +9,9 @@ require "yaml"
 #                           .github/workflows/data-deploy.yml, which passes the
 #                           result to `relaton index` as --title/--favicon/
 #                           --description.
-#   bin/check-data-pages -> #pages_url and #raw_index_url, the rollout gate that
-#                           requires 200 from both.
+#   bin/check-data-pages -> #pages_url and #raw_index_urls, the rollout gate that
+#                           requires 200 from the site and from one of the index
+#                           candidates.
 #
 # This class used to also render a Jekyll `_config.yml` per repo. support#58
 # (relaton/relaton#83) replaced that build with `relaton index`, which reads each
@@ -24,6 +25,18 @@ class DataIndexConfig
   # (https://relaton.github.io/relaton-data-<repo>/). Override with --base when a
   # repo serves Pages from a custom domain.
   PAGES_HOST = "https://relaton.github.io".freeze
+
+  # The index filenames a data repo may publish, newest first.
+  #
+  # This file used to carry a per-row `source:` naming the one each repo served.
+  # That key was a hand-copied echo of a fact that lives on
+  # raw.githubusercontent.com, and it drifted twice: `iana` named an index its
+  # repo had not published yet, `ietf` named one its repo had deleted. So
+  # bin/check-data-pages probes these names instead and takes the first 200.
+  #
+  # Newest first matters. A repo mid-migration can serve two names at once, and
+  # oldest-first would report the one it is retiring.
+  INDEX_FILES = %w[index-v3.yaml index-v2.yaml index-v1.yaml].freeze
 
   attr_reader :defaults, :repos
 
@@ -85,13 +98,31 @@ class DataIndexConfig
     "#{base.chomp('/')}/relaton-data-#{repo}/"
   end
 
-  # The published index a data repo serves: `baseurl` (repo + real default
-  # branch) + `source`. bin/check-data-pages requires 200 from it, so a row's
-  # `source` has to name the index that repo publishes today, not the one its
-  # relaton consumer is moving to.
-  def raw_index_url(repo)
+  # Every index URL a data repo might serve: `baseurl` (repo + real default
+  # branch) + each INDEX_FILES name, newest first. Nothing here knows which one
+  # a repo publishes today, and nothing needs to — bin/check-data-pages requires
+  # 200 from the first that answers.
+  def raw_index_urls(repo)
     e = entry(repo)
-    "#{baseurl(e)}#{e.fetch('source')}"
+    INDEX_FILES.map { |file| "#{baseurl(e)}#{file}" }
+  end
+
+  # Pick the index a repo actually serves: the first candidate the block reports
+  # 200 for, as `[status, url]`. The block takes a URL and returns its HTTP
+  # status; it lives in bin/check-data-pages so this class stays offline and the
+  # choosing logic stays under test.
+  #
+  # With no candidate live, this returns the last one tried rather than nil, so
+  # a caller has a status to print. That is the oldest name, which is NOT a
+  # statement that the repo should serve it — bin/check-data-pages says which
+  # names it probed when it reports the miss.
+  def first_live_index(repo, &probe)
+    last = nil
+    raw_index_urls(repo).each do |url|
+      last = [probe.call(url), url]
+      return last if last.first == 200
+    end
+    last
   end
 
   private

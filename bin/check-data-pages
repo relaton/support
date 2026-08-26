@@ -5,15 +5,17 @@
 # data-index/configs.yml this checks two URLs and prints their HTTP status:
 #
 #   site      - https://relaton.github.io/relaton-data-<repo>/  (the Pages site)
-#   raw-index - <baseurl><source>  (the index the theme plugin fetches at build
-#               time; a 404 here is why a built site can render empty)
+#   raw-index - the index the relaton gems fetch from the data repo. configs.yml
+#               does not name it: this probes DataIndexConfig::INDEX_FILES under
+#               the repo's baseurl, newest first, and reports the first 200.
+#               A repo serving none of them publishes no consumable index.
+#
+# The raw-index check does not gate the Pages build. data-deploy.yml builds the
+# site with `relaton index` over the repo's own data/ folder and never fetches
+# an index-vN.yaml; the check covers the separate contract the gems rely on.
 #
 # Exits non-zero if any checked URL is not 200, so it doubles as a rollout gate.
-#
-# One row is a KNOWN, expected 404: `iana`, whose configs.yml `source` names
-# index-v2 (matching Relaton::Iana::INDEXFILE) while relaton-data-iana@v2 still
-# publishes index-v1 only. It clears when that repo's crawler emits index-v2.
-# Any OTHER repo's non-200 is a real regression. See data-index/README.adoc.
+# Every non-200 is a real regression — there is no expected failure in the list.
 # This is the operator's "confirm each site returns 200" step: run it AFTER the
 # Cimas push + _config.yml commits + Pages enablement have landed.
 #
@@ -86,9 +88,12 @@ def http_status(url, timeout:, hops: 5)
   http.use_ssl = (uri.scheme == "https")
   http.open_timeout = timeout
   http.read_timeout = timeout
-  # Pass a block so Net::HTTP hands back the response without buffering the body
-  # (we only need the status + Location; index files can be large).
-  res = http.request_get(uri.request_uri) { |_response| }
+  # HEAD, because only the status and Location are wanted and an index can be
+  # tens of megabytes. The previous GET-with-a-block left a large body unread on
+  # the socket, and abandoning it raised OpenSSL::SSL::SSLError on exactly the
+  # 200s this is meant to confirm — a live index was reported as an error, or,
+  # once the probe moved on to the next candidate, as the last candidate's 404.
+  res = http.request_head(uri.request_uri)
   code = res.code.to_i
   if [301, 302, 307, 308].include?(code) && hops.positive? && res["location"]
     return http_status(URI.join(url, res["location"]).to_s, timeout: timeout, hops: hops - 1)
@@ -103,10 +108,11 @@ checks = []
 checks << :site if options[:site]
 checks << :raw if options[:raw]
 
-# Precompute the URLs once (also lets us size each column to its widest URL so
-# the status/URL columns line up regardless of repo-name or URL length).
+# Precompute the site URLs once (also lets us size that column to its widest URL
+# so the status/URL columns line up regardless of repo-name or URL length). The
+# raw-index URL is not precomputed: which candidate answers is only known once
+# the probe runs.
 site_urls = options[:site] ? selected.to_h { |r| [r, config.pages_url(r, base: options[:base])] } : {}
-raw_urls = options[:raw] ? selected.to_h { |r| [r, config.raw_index_url(r)] } : {}
 
 repo_w = ([4] + selected.map(&:length)).max # 4 = len("repo")
 site_w = (site_urls.values.map(&:length) + [0]).max
@@ -129,9 +135,14 @@ selected.each do |repo|
   end
 
   if options[:raw]
-    st = http_status(raw_urls[repo], timeout: options[:timeout])
+    # DataIndexConfig walks the candidates; this supplies the HTTP status for
+    # each and stops at the first 200.
+    st, url = config.first_live_index(repo) { |u| http_status(u, timeout: options[:timeout]) }
     statuses[:raw] = st
-    row += "  #{format('%-4s', st)} #{raw_urls[repo]}"
+    row += "  #{format('%-4s', st)} #{url}"
+    # On a total miss the URL above shows only the last name tried, which reads
+    # as if that were the expected one. Say what was actually probed.
+    row += " (none of #{DataIndexConfig::INDEX_FILES.join(', ')})" unless st == 200
   end
 
   puts row

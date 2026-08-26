@@ -21,22 +21,27 @@ keys that fed it were removed. Git history holds them if they are ever wanted.
 
 == Files
 
-`configs.yml`:: The verified per-repo table: `repo`, `display`, `source` (the
-  index that repo publishes *today*), `branch` (its real default branch — drives
-  `baseurl`), plus optional `favicon` / `description` overrides. Edit this to
-  change any repo's config.
+`configs.yml`:: The verified per-repo table: `repo`, `display`, `branch` (its
+  real default branch — drives `baseurl`), plus optional `favicon` /
+  `description` overrides. Edit this to change any repo's config.
 +
 `display`, `favicon` and `description` are the branding the live `relaton index`
 build renders, so an edit to them changes a repo's published page on its next
-deploy — no data-repo change involved. `source` and `branch` build the raw index
-URL `../bin/check-data-pages` requires a 200 from, so `source` must follow what
-the data repo publishes, not what its relaton consumer is moving to.
+deploy — no data-repo change involved. `branch` builds the `baseurl` that
+`../bin/check-data-pages` probes for an index.
++
+The table names no index file. It used to: a `source` key pinned the one each
+repo served, and it drifted in both directions — `iana` named an index its repo
+had not published yet, `ietf` named one its repo had since deleted.
+`DataIndexConfig::INDEX_FILES` now lists the candidates and the checker probes
+them newest-first, so nothing here has to be kept in step with a crawl.
 `../bin/index-branding`:: Resolves one repo's `title`/`favicon`/`description` from
   `configs.yml` and prints them in `$GITHUB_OUTPUT` form. Run by the "Resolve
   branding" step of `data-deploy.yml`; useful by hand to preview what a repo will
   publish (`bin/index-branding relaton/relaton-data-iana`).
-`../bin/check-data-pages`:: Confirms each repo's Pages site and raw index URL return
-  200 (the "confirm each site returns 200" gate). Run it after the rollout lands.
+`../bin/check-data-pages`:: Confirms each repo's Pages site returns 200, and that
+  the repo serves one of `INDEX_FILES` (the "confirm each site returns 200"
+  gate). Run it after the rollout lands.
 
 == When the site rebuilds
 
@@ -311,35 +316,27 @@ Small flavors (bipm, iana) finish in under two minutes.
 
 `configs.yml` covers *31 repos*: the 26 rollout targets plus the 3 already-live
 (*ids, oasis, w3c*), folded in so this file is the single source for every site,
-plus *iala* (added 2026-08-17; `main`-default, `index-v2.yaml`) and *ietf* (added
+plus *iala* (added 2026-08-17; `main`-default) and *ietf* (added
 2026-08-24). The 3 live ones carry per-repo `favicon`/`description` overrides.
 
 `ietf` closes the last gap between this file and `cimas.yml`: Cimas had always
 synced `deploy.yml` into `relaton-data-ietf`, but the repo published no index, so
 it carried no row and its site fell back to a bare `IETF Index`. It now crawls
-with `Relaton::Ietf::DataFetcher`, which commits `index-v1.yaml` (177,230
-records) on `main`. Every repo Cimas syncs `deploy.yml` into now has a row.
+with `Relaton::Ietf::DataFetcher`, which commits the pubid-structured
+`index-v2.yaml` on `main` and deleted `index-v1`. Every repo Cimas syncs
+`deploy.yml` into now has a row.
 
-[WARNING]
-====
-*iana is a known, expected 404 in `../bin/check-data-pages`.* Its `source` is
-`index-v2.yaml`, matching `Relaton::Iana::INDEXFILE` in `relaton/relaton@main`,
-but `relaton-data-iana@v2` still publishes `index-v1` only (measured
-2026-08-22). It is the one row whose `source` leads its data repo's publish
-rather than following it.
-
-Any *other* repo's non-200 is a real regression. This one clears when
-`relaton-data-iana`'s crawler emits `index-v2` — see
-`HANDOFFS/relaton__relaton-data-iana__crawler-emit-index-v1.md`. Nothing
-automated is affected: `data-deploy.yml` reads only branding from `configs.yml`,
-and `check-data-pages` is a hand-run gate.
-====
+NOTE: There is no expected failure in `../bin/check-data-pages` any more. Every
+non-200 is a real regression. `iana` used to be a standing exception, because its
+`source` key named `index-v2` before `relaton-data-iana@v2` published it; that
+repo now serves `index-v2` (measured 2026-08-25) and the key is gone.
 
 Live (200): *every repo in `configs.yml`* — the rollout completed 2026-08-17
 (adobe seeded its first corpus; ogc, nist, rfcs, rfcsubseries, itu-r, plateau and
-xsf joined via the `cimas-sync-2026-08-17` wave). The only relaton-data-* repos
-without a Pages site are the two deliberate exclusions: *ietf* (publishes no
-document index) and *sdo* (org/logo store, not a document corpus — see below).
+xsf joined via the `cimas-sync-2026-08-17` wave). The only relaton-data-* repo
+without a Pages site is the one deliberate exclusion: *sdo* (org/logo store, not
+a document corpus — see below). *ietf* was the other until it began publishing an
+index and took a row on 2026-08-24.
 
 Pages *enablement* state (verified via `gh api repos/relaton/relaton-data-<repo>/pages`):
 
@@ -365,7 +362,7 @@ Re-check current state any time with:
 [source,sh]
 ----
 bin/check-data-pages              # site + raw-index for all 31
-bin/check-data-pages --site-only  # just the Pages sites (the 404s to fix)
+bin/check-data-pages --site-only  # just the Pages sites
 ----
 
 == Rollout
@@ -404,9 +401,6 @@ all of them: for a target that has never had this file, the sync is an *add*.
 ----
 bin/check-data-pages              # exits non-zero until every repo is 200
 ----
-+
-NOTE: it will report `iana` as 404 until `relaton-data-iana` publishes
-`index-v2` — see the warning under "Status".
 +
 The site should list DocID -> file with working pagination and a citable DocID
 per row.

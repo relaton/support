@@ -23,19 +23,29 @@ RSpec.describe "DataIndexConfig Pages URLs" do
     end
   end
 
-  describe "#raw_index_url" do
-    it "joins the repo baseurl (real default branch) with the published source" do
-      expect(config.raw_index_url("iso"))
-        .to eq("https://raw.githubusercontent.com/relaton/relaton-data-iso/v2/index-v2.yaml")
+  describe "#raw_index_urls" do
+    it "joins the repo baseurl (real default branch) with every index name" do
+      expect(config.raw_index_urls("iso")).to eq(
+        %w[
+          https://raw.githubusercontent.com/relaton/relaton-data-iso/v2/index-v3.yaml
+          https://raw.githubusercontent.com/relaton/relaton-data-iso/v2/index-v2.yaml
+          https://raw.githubusercontent.com/relaton/relaton-data-iso/v2/index-v1.yaml
+        ],
+      )
     end
 
-    it "uses the repo's own default branch (adobe -> main) and source" do
-      expect(config.raw_index_url("adobe"))
-        .to eq("https://raw.githubusercontent.com/relaton/relaton-data-adobe/main/index-v2.yaml")
+    it "uses the repo's own default branch (adobe -> main)" do
+      expect(config.raw_index_urls("adobe")).to eq(
+        %w[
+          https://raw.githubusercontent.com/relaton/relaton-data-adobe/main/index-v3.yaml
+          https://raw.githubusercontent.com/relaton/relaton-data-adobe/main/index-v2.yaml
+          https://raw.githubusercontent.com/relaton/relaton-data-adobe/main/index-v1.yaml
+        ],
+      )
     end
 
-    it "uses index-v3 for iho" do
-      expect(config.raw_index_url("iho")).to end_with("/v2/index-v3.yaml")
+    it "raises for an unknown repo" do
+      expect { config.raw_index_urls("nope") }.to raise_error(ArgumentError, /unknown repo/)
     end
   end
 end

@@ -10,7 +10,7 @@
 #     >> "$GITHUB_OUTPUT"
 #
 # Branding is resolved centrally because cimas.yml maps
-# `.github/workflows/deploy.yml` as a whole-file copy for 29 repos: a `with:`
+# `.github/workflows/deploy.yml` as a whole-file copy for 31 repos: a `with:`
 # block carrying it is wiped on the next `cimas sync`, and the site silently
 # loses its favicon and description. See data-index/README.adoc.
 #

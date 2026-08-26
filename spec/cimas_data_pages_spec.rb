@@ -79,7 +79,7 @@ RSpec.describe "configs.yml <-> cimas.yml consistency" do
     # Empty, and that is the point: configs.yml now covers every data-group repo
     # that gets deploy.yml. relaton-data-ietf was the last exclusion — it had no
     # document index until it migrated to Relaton::Ietf::DataFetcher, which
-    # commits index-v1.yaml as it crawls. The list stays so a future deliberate
+    # commits index-v2.yaml as it crawls. The list stays so a future deliberate
     # non-index repo has somewhere to go, and so removing one is a visible edit.
     excluded = %w[]
     deploys_pages =
