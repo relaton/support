@@ -1,0 +1,152 @@
+---
+# Every Cimas-written file that `cimas.yml` no longer maps, and what was
+# decided about it. `bin/cimas-orphan-audit` fails on an orphan that is not
+# listed here, so a new one is a red gate and a row that goes away is a visible
+# edit. Raised by relaton/support#65.
+#
+# disposition:
+#   keep   - the destination repo owns the file. A wave must never delete it.
+#            The row retires when that repo drops the two Cimas header lines,
+#            so a `keep` row names the hand-off that asks for it.
+#   delete - the file is dead. A wave may take it, and the row retires with it.
+#   review - nobody has judged it yet. The audit still passes, because the row
+#            proves the question is written down, but no wave may run unscoped
+#            while one stands.
+#
+# Read this file with `cimas.yml` beside it. This one records what is in the
+# destination repos; that one records what this repo intends to sync.
+allowed:
+  # --- lint configuration from a config older than this repo -----------------
+  # No cimas.yml in this repo's history has ever mapped .rubocop.yml or
+  # .hound.yml, so the header on them is a claim of ownership nobody here can
+  # honour. Three of the four repos still read the file.
+  - repo: relaton-core
+    path: .rubocop.yml
+    since: 2026-09-03
+    issue: relaton/support#65
+    disposition: keep
+    handoff: relaton__relaton-core__drop-cimas-header-from-rubocop.md
+    reason: >-
+      The repo's Gemfile carries rubocop, so the file is live configuration. It
+      also inherits from riboseinc/oss-guides, which no template here holds.
+  - repo: ieee-idams
+    path: .rubocop.yml
+    since: 2026-09-03
+    issue: relaton/support#65
+    disposition: keep
+    handoff: relaton__ieee-idams__drop-cimas-header-from-rubocop.md
+    reason: >-
+      The repo's Rakefile runs rubocop, so a delete changes what CI enforces.
+  - repo: loc_mods
+    path: .rubocop.yml
+    since: 2026-09-03
+    issue: relaton/support#65
+    disposition: keep
+    handoff: relaton__loc-mods__drop-cimas-header-from-rubocop.md
+    reason: >-
+      The repo's Rakefile runs rubocop, so a delete changes what CI enforces.
+      The cimas.yml key is loc_mods; the repo is relaton/loc-mods.
+  - repo: relaton-render
+    path: .rubocop.yml
+    since: 2026-09-03
+    issue: relaton/support#65
+    disposition: review
+    reason: >-
+      Nothing in the repo reads it: neither its Gemfile nor its Rakefile
+      mentions rubocop. It is either dead configuration to delete, or a lint
+      setup to restore. A person has to say which.
+  - repo: relaton-render
+    path: .hound.yml
+    since: 2026-09-03
+    issue: relaton/support#65
+    disposition: review
+    reason: >-
+      Configures Hound, a review service, and points it at the .rubocop.yml
+      above. It stands or falls with that file.
+
+  # --- a workflow that has never run -----------------------------------------
+  - repo: relaton-model-w3c
+    path: .github/workflows/automerge.yml
+    since: 2026-09-03
+    issue: relaton/support#65
+    disposition: delete
+    reason: >-
+      Fires on `repository_dispatch: tests-passed`, which nothing in the repo
+      sends, and the workflow has zero runs. It calls
+      pascalgn/automerge-action@v0.12.0. No automerge template has ever existed
+      in this repo, so the file came from a config that predates it.
+  - repo: relaton-model-ieee
+    path: .github/workflows/automerge.yml
+    since: 2026-09-03
+    issue: relaton/support#65
+    disposition: delete
+    reason: >-
+      Identical to relaton-model-w3c's, and equally unused: zero runs, and
+      nothing sends the dispatch it waits for.
+
+  # --- the model Makefile hand-edit ------------------------------------------
+  # All three call `bundle exec lutaml`, which gh-actions/model/Makefile has
+  # never done (no commit in its history adds `bundle exec`). Restoring the
+  # mapping would run the system lutaml instead, so the mapping stays off and
+  # the header has to go. cimas.yml carries the matching `# unmapped` marker.
+  - repo: relaton-model-3gpp
+    path: Makefile
+    since: 2026-09-03
+    issue: relaton/support#65
+    disposition: keep
+    handoff: relaton__relaton-model-3gpp__drop-cimas-header-from-makefile.md
+    reason: >-
+      Hand-edited to call `bundle exec lutaml`. Deleting it stops the PNG build
+      the repo exists to run.
+  - repo: relaton-model-oasis
+    path: Makefile
+    since: 2026-09-03
+    issue: relaton/support#65
+    disposition: keep
+    handoff: relaton__relaton-model-oasis__drop-cimas-header-from-makefile.md
+    reason: >-
+      Hand-edited the same way relaton-model-3gpp's is.
+  - repo: relaton-model-ccsds
+    path: Makefile
+    since: 2026-09-03
+    issue: relaton/support#65
+    disposition: keep
+    handoff: relaton__relaton-model-ccsds__drop-cimas-header-from-makefile.md
+    reason: >-
+      Hand-edited the same way relaton-model-3gpp's is.
+
+  # --- data-repo callers this config has never mapped ------------------------
+  - repo: relaton-data-iho
+    path: .github/workflows/crawler.yml
+    since: 2026-09-03
+    issue: relaton/support#65
+    disposition: review
+    reason: >-
+      A live daily crawl at 14:00 that calls this repo's shared crawler.yml.
+      The mapping moved between crawler.yml and check_data.yml four times in
+      2021-2022 and settled on check_data.yml (335c1e8), so the file is a
+      leftover of that swap. Deleting it stops the crawl; keeping it means the
+      config should map it again. A person has to say which.
+  - repo: relaton-data-easc
+    path: .github/workflows/check_data.yml
+    since: 2026-09-03
+    issue: relaton/support#65
+    disposition: review
+    reason: >-
+      A live caller of this repo's shared check-data.yml. cimas.yml has never
+      mapped check_data.yml for this repo, so restoring the mapping is a fleet
+      decision, not a correction.
+  - repo: relaton-data-gost
+    path: .github/workflows/check_data.yml
+    since: 2026-09-03
+    issue: relaton/support#65
+    disposition: review
+    reason: >-
+      The same as relaton-data-easc's.
+  - repo: relaton-data-iec
+    path: .github/workflows/check_data.yml
+    since: 2026-09-03
+    issue: relaton/support#65
+    disposition: review
+    reason: >-
+      The same as relaton-data-easc's.
