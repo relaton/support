@@ -1,8 +1,8 @@
 name: Deploy
 
-# A finished crawl, the fallback cron, or a human. Nothing here builds on a
-# push. This file publishes; its sibling `check-index.yml` ("Check index") runs
-# the same build on a pull request and stops short of Pages.
+# A finished crawl, or a human. Nothing here builds on a push, and nothing here
+# runs on a cron. This file publishes; its sibling `check-index.yml` ("Check
+# index") runs the same build on a pull request and stops short of Pages.
 #
 # Dropped `pull_request`: publication is gated on the repo's default branch
 # inside data-deploy.yml, so a PR ran the whole build — npm ci, the Vue compile
@@ -23,7 +23,7 @@ name: Deploy
 # a deploy, so there the migration is a strict no-op; the dropped
 # `tags: [ v* ]` was inert everywhere, since the deploy gate rejects a tag ref.
 # The cost of losing it, where it worked at all: a hand-committed data or config
-# fix now waits for the cron below, or a `workflow_dispatch`.
+# fix now waits for the next finished crawl, or a `workflow_dispatch`.
 on:
   # Publish because the crawl finished, not an hour after it was meant to.
   # Scheduled dispatch drifts badly under load: 11 of relaton-data-iana's last
@@ -51,17 +51,17 @@ on:
     workflows: [ Crawler ]
     types: [ completed ]
     branches: [ master, main, v2 ]
-  # Fallback only, and it is NOT about days the crawler commits nothing —
-  # `types: [completed]` fires on every crawler run regardless of whether the
-  # "Push data" step committed. What this covers is a crawler that never ran or
-  # was disabled, and picking up upstream relaton/relaton changes that alter the
-  # generated index. Cost: a second full build per day (~3 min on the largest
-  # flavor, which includes compiling the frontend); drop to weekly if it bites.
+  # No cron of its own. `types: [ completed ]` above fires on EVERY finished
+  # crawl, committed data or not, and Crawler runs daily — so `workflow_run`
+  # already gives exactly one publish per day. The build checks out
+  # relaton/relaton@main each time, so an upstream change to the generated index
+  # arrives through that same run; that was the fallback's other job.
   #
-  # Set clear of the crawler's observed run window rather than one hour after
-  # its nominal cron — see the note on workflow_run above.
-  schedule:
-  - cron: '0 18 * * *'
+  # What this costs: a day whose crawl FAILS gets no deploy at all, because
+  # data-deploy.yml gates the build on the crawler's conclusion. Pages keeps
+  # serving the previous deployment. Use `workflow_dispatch` to publish sooner.
+  # Do not re-add a cron: it re-ran the whole build — npm ci, the Vue compile, a
+  # full corpus parse — and republished identical bytes, in 31 repos, every day.
   workflow_dispatch:
 
 jobs:

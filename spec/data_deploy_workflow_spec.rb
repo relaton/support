@@ -275,9 +275,10 @@ RSpec.describe ".github/workflows/data-deploy.yml" do
 
     it "is declared, so two Pages deployments cannot collide" do
       # Both runs reach actions/deploy-pages@v4 and the loser fails with a
-      # concurrent-deployment error. Overlap is easy: the caller template fires
-      # on `workflow_run` *and* a fallback cron, and a build runs for minutes
-      # (~3 on the largest flavor). Declared here rather than per caller because GitHub
+      # concurrent-deployment error. Overlap is easy even with one trigger per
+      # publish: a build runs for minutes (~3 on the largest flavor), so a
+      # `workflow_run` deploy can meet a `workflow_dispatch` one, or a second
+      # crawl finishing behind the first. Declared here rather than per caller because GitHub
       # documents the *called* workflow's top level as where concurrency for a
       # reusable workflow belongs — `jobs.<id>.concurrency` on the calling job
       # "will not behave as expected".
