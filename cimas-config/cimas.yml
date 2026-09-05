@@ -437,6 +437,22 @@ repositories:
     files:
       .github/workflows/crawler.yml: gh-actions/data/crawler.yml
       .github/workflows/keep-alive.yml: gh-actions/master/keep-alive.yml
+  # A pre-relaton-data-* source, on its own `nist-pages` default branch.
+  # Mapped for keep-alive.yml alone: `fetcher.yml` and
+  # `create_bibtex.yml` are hand-written and carry no Cimas header, so they are
+  # `unmanaged` to the audit and no cleanup wave can reach them. Adding a
+  # crawler.yml mapping here would not replace `fetcher.yml`; it would add a
+  # second, competing crawl beside it. Read both before mapping either.
+  #
+  # It was outside cimas.yml entirely until 2026-09-04, which is why its
+  # keep-alive still named the metanorma/ci workflow deleted on 2026-06-22.
+  # By then `fetcher.yml` and `keep-alive.yml` had both been disabled for
+  # inactivity; re-enabling those is an API call, not a sync (see README).
+  NIST-Tech-Pubs:
+    remote: ssh://git@github.com/relaton/NIST-Tech-Pubs
+    branch: nist-pages
+    files:
+      .github/workflows/keep-alive.yml: gh-actions/master/keep-alive.yml
   relaton-data-ids:
     remote: ssh://git@github.com/relaton/relaton-data-ids
     branch: v2
@@ -836,6 +852,18 @@ groups:
     - relaton-data-jcgm
     - relaton-data-oiml
     - relaton-data-iala
+    # Two data sources that predate the relaton-data-* naming, listed here so a
+    # `-g data` wave reaches them. Both were unreachable by every group-scoped
+    # wave until 2026-09-04 — rawdata-bipm-metrologia because no group named it,
+    # NIST-Tech-Pubs because cimas.yml had no entry at all — and both still
+    # called the metanorma/ci keep-alive workflow deleted on 2026-06-22.
+    #
+    # Neither maps deploy.yml or check-index.yml, so the pairing rule in
+    # spec/cimas_data_pages_spec.rb holds for both, and neither needs a
+    # data-index/configs.yml row. `spec/cimas_config_spec.rb` now fails on any
+    # ungrouped repo that maps a fleet file, so this hole cannot reopen quietly.
+    - rawdata-bipm-metrologia
+    - NIST-Tech-Pubs
   python:
     - relaton-py
     - relaton-bib-py
