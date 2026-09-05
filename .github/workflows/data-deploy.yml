@@ -173,10 +173,11 @@ on:
 permissions:
   contents: read
 
-# Serialize Pages deployments per calling repo. Runs overlap easily — the caller
-# template fires on `workflow_run` *and* a fallback cron, and a build runs for
-# minutes — and two concurrent actions/deploy-pages runs make the loser fail with
-# a concurrent-deployment error. Mirrors GitHub's own Pages starter workflow.
+# Serialize Pages deployments per calling repo. Runs overlap easily — a build
+# runs for minutes, and a `workflow_run` deploy can meet a `workflow_dispatch`
+# one, or a second crawl finishing behind the first — and two concurrent
+# actions/deploy-pages runs make the loser fail with a concurrent-deployment
+# error. Mirrors GitHub's own Pages starter workflow.
 #
 # Declared at the top level of this *called* workflow, which is where GitHub
 # documents concurrency for a reusable workflow to live: `jobs.<id>.concurrency`

@@ -38,9 +38,6 @@ RSpec.describe "cimas-config/gh-actions/data/*.yml (the Cimas caller templates)"
   workflow_run = triggers["workflow_run"]
   deploy_job = deploy.fetch("jobs").fetch("deploy")
 
-  # "0 14 * * *" -> 14
-  cron_hour = ->(schedule) { Integer(schedule.fetch(0).fetch("cron").split.fetch(1)) }
-
   describe "the workflow_run trigger" do
     it "is declared, so a crawler commit reaches Pages the same day" do
       expect(workflow_run).to be_a(Hash)
@@ -103,7 +100,7 @@ RSpec.describe "cimas-config/gh-actions/data/*.yml (the Cimas caller templates)"
       expect(crawler_triggers.keys).to contain_exactly("schedule", "workflow_dispatch")
     end
 
-    it "deploys only from a finished crawl, the fallback cron, or by hand" do
+    it "deploys only from a finished crawl or by hand" do
       # A `pull_request` deploy ran the whole build — npm ci and the Vue compile
       # under `source: git`, then a full corpus parse and a Pages artifact
       # upload — and then skipped `deploy`, because publication is gated on the
@@ -112,7 +109,7 @@ RSpec.describe "cimas-config/gh-actions/data/*.yml (the Cimas caller templates)"
       # `workflow_run` stays: it is not push-driven, and it is the only thing
       # that makes publication track the crawl rather than a cron guessed to
       # land after it (see the note at the top of this file).
-      expect(triggers.keys).to contain_exactly("workflow_run", "schedule", "workflow_dispatch")
+      expect(triggers.keys).to contain_exactly("workflow_run", "workflow_dispatch")
     end
 
     it "leaves no push or pull_request trigger in Deploy or Crawler" do
@@ -145,12 +142,21 @@ RSpec.describe "cimas-config/gh-actions/data/*.yml (the Cimas caller templates)"
     end
   end
 
-  it "schedules its fallback cron clear of the crawler's observed window" do
-    # A fallback for days the crawler commits nothing, not the primary path.
-    # The old "one hour after the crawl" gap was inside the drift, so require a
-    # real margin over the crawler template's own cron.
-    expect(cron_hour.call(triggers.fetch("schedule")))
-      .to be >= cron_hour.call(crawler.fetch(true).fetch("schedule")) + 3
+  it "carries no cron of its own, so a crawl produces exactly one publish" do
+    # The fallback cron was a second full build every day — npm ci, the Vue
+    # compile, a whole corpus parse — that then republished identical bytes, in
+    # 31 repos. Nothing anywhere compares the built index with the published one,
+    # so it could not skip that work.
+    #
+    # It is not needed. `types: [completed]` on the workflow_run trigger fires on
+    # every finished crawl, committed data or not, and Crawler runs daily; the
+    # build checks out relaton/relaton@main each time, so an upstream change to
+    # the generated index arrives through that same run.
+    #
+    # The accepted cost, and the reason someone will want to re-add it: a day
+    # whose crawl FAILS gets no deploy, because data-deploy.yml gates the build
+    # on the crawler's conclusion. That is deliberate — dispatch it instead.
+    expect(triggers).not_to have_key("schedule")
   end
 
   describe "the pre-merge check caller (check-index.yml)" do
