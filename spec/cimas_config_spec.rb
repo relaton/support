@@ -3,6 +3,10 @@
 # the executable; the orphan decision itself is pure logic and is pinned here,
 # because that decision is what deletes files.
 require "cimas_config"
+# For the .raw_url examples only: they assert that what it builds is something
+# URI.parse accepts, which is the bug that method exists to prevent. The
+# library itself needs no URI; bin/cimas-orphan-audit requires it for Net::HTTP.
+require "uri"
 
 RSpec.describe CimasConfig do
   let(:config) { described_class.load }
@@ -15,7 +19,7 @@ RSpec.describe CimasConfig do
 
   describe ".load" do
     it "reads every repositories: entry of the shipped cimas.yml" do
-      expect(config.names.size).to eq(98)
+      expect(config.names.size).to eq(99)
     end
 
     it "reads no duplicate name" do
@@ -81,14 +85,43 @@ RSpec.describe CimasConfig do
   end
 
   describe "#ungrouped" do
+    # The only mapping an ungrouped repo may carry. `-g all` reaches these
+    # repos, and no fleet wave needs them.
+    gem_pair = [
+      ".github/workflows/rake.yml",
+      ".github/workflows/release.yml",
+    ].freeze
+
     it "names every repo that no group lists" do
       # `cimas -g <group>` never reaches these, so a wave scoped by group has a
       # different blast radius from `-g all`. The audit warns about it. The
-      # list is asserted whole so a new ungrouped repo is a visible edit; none
-      # of these five maps a file today.
+      # list is asserted whole so a new ungrouped repo is a visible edit.
+      #
+      # An earlier version of this example claimed none of these mapped a file.
+      # That was never true: all four map the gem pair above, and a fifth,
+      # rawdata-bipm-metrologia, mapped crawler.yml and keep-alive.yml. The
+      # wrong comment is what made the hole look harmless, so the next example
+      # asserts the property this one only claimed.
       expect(config.ungrouped).to eq(
-        %w[relaton-core ieee-idams loc_marc loc_mods rawdata-bipm-metrologia],
+        %w[relaton-core ieee-idams loc_marc loc_mods],
       )
+    end
+
+    it "leaves ungrouped no repo that maps a fleet file" do
+      # rawdata-bipm-metrologia sat here mapping keep-alive.yml, so no
+      # `-g <group>` wave could reach it, and the 2026-09-01 keep-alive outage
+      # was unrepairable there by any group-scoped sync. An ungrouped repo that
+      # maps a fleet file IS that hole. The four that remain map only the gem
+      # pair, which is a separate question: grouping them would change what a
+      # `flavors` wave reaches.
+      offenders = config.ungrouped.reject do |name|
+        config.files(name).keys.sort == gem_pair
+      end
+      detail = offenders.map { |name| "#{name} (#{config.files(name).keys.join(', ')})" }
+
+      expect(offenders).to be_empty,
+                           "these repos are in no group yet map a fleet file, so no " \
+                           "group-scoped wave reaches them: #{detail.join('; ')}"
     end
   end
 
@@ -121,6 +154,56 @@ RSpec.describe CimasConfig do
                       .reject { |src| File.exist?(config.template_path(src)) }
       expect(missing).to be_empty,
                          "cimas.yml maps template(s) that do not exist: #{missing.join(', ')}"
+    end
+  end
+
+  describe ".raw_url" do
+    # bin/cimas-orphan-audit reads a file over --max-bytes as header bytes only,
+    # over raw.githubusercontent.com with a Range request. It built that URL by
+    # interpolation, so a path containing a space raised URI::InvalidURIError,
+    # the blanket `rescue StandardError` turned it into nil, and the audit
+    # reported the file as unreadable — which is an exit-1 condition. Adding
+    # NIST-Tech-Pubs to cimas.yml surfaced it: that repo holds a 2.8 MB
+    # `NIST-TS-itables-compact (1).html`, so the audit failed on every run for a
+    # reason that had nothing to do with any Cimas file.
+    it "escapes a path that needs it" do
+      url = described_class.raw_url("relaton/NIST-Tech-Pubs", "nist-pages",
+                                    "NIST-TS-itables-compact (1).html")
+
+      # The parentheses are escaped too. They are legal unescaped in a path, so
+      # this is stricter than it has to be; both forms answer 206 to the Range
+      # request the audit makes. Pinned as produced rather than as minimal.
+      expect(url).to eq(
+        "https://raw.githubusercontent.com/relaton/NIST-Tech-Pubs/nist-pages/" \
+        "NIST-TS-itables-compact%20%281%29.html",
+      )
+      expect { URI.parse(url) }.not_to raise_error
+    end
+
+    it "leaves an ordinary path alone" do
+      # The slash separators must survive, or every nested path 404s.
+      expect(described_class.raw_url("relaton/relaton-data-iso", "v2",
+                                     ".github/workflows/keep-alive.yml"))
+        .to eq("https://raw.githubusercontent.com/relaton/relaton-data-iso/v2/" \
+               ".github/workflows/keep-alive.yml")
+    end
+
+    it "escapes the characters that would end the path early" do
+      # `URI::DEFAULT_PARSER.escape` leaves `?` and `&` raw, so a file named
+      # `a?b.html` would split into a path and a query string and fetch
+      # something else entirely. A `+` must not survive either: CGI.escape
+      # writes a space as `+`, so a literal one has to be encoded to stay
+      # distinguishable.
+      url = described_class.raw_url("relaton/x", "main", "a?b&c+d#e.html")
+
+      expect(url).to end_with("/main/a%3Fb%26c%2Bd%23e.html")
+    end
+
+    it "encodes a percent that is already in the name" do
+      # These paths come from a GitHub contents listing, so a `%20` in one is a
+      # literal percent-two-zero in the filename, not an escape to preserve.
+      expect(described_class.raw_url("relaton/x", "main", "a%20b.html"))
+        .to end_with("/main/a%2520b.html")
     end
   end
 

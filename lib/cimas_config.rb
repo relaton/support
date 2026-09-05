@@ -1,4 +1,5 @@
 require "date"
+require "erb"
 require "set"
 require "yaml"
 
@@ -76,6 +77,29 @@ class CimasConfig
     return false if content.nil?
 
     content[0, HEADER_READ_BYTES].to_s.include?(GENERATED_HEADER_MARKER)
+  end
+
+  # Where bin/cimas-orphan-audit reads the header bytes of a file too big to
+  # fetch whole. Built here rather than interpolated at the call site because a
+  # destination path may hold a space: `URI.parse` raises on one, the caller's
+  # `rescue StandardError` turns that into nil, and the audit then reports a
+  # readable file as unreadable — which exits 1. relaton/NIST-Tech-Pubs holds a
+  # 2.8 MB `NIST-TS-itables-compact (1).html`, so this is not hypothetical.
+  #
+  # Escaped per segment: the separators have to survive, or every nested path
+  # 404s. Only the path is escaped; `slug` and `branch` come from cimas.yml.
+  #
+  # `ERB::Util.url_encode` rather than `URI::DEFAULT_PARSER.escape`, which
+  # leaves `?` and `&` raw — a file named `a?b.html` would then split into a
+  # path and a query string and fetch the wrong thing. Not `CGI.escape` either:
+  # it writes a space as `+`, which in a path means a literal plus.
+  #
+  # A path that already contains a percent is encoded again, on purpose: these
+  # come from a GitHub contents listing, so `%20` there is a literal percent,
+  # two and a zero in the filename.
+  def self.raw_url(slug, branch, path)
+    escaped = path.split("/").map { |seg| ERB::Util.url_encode(seg) }.join("/")
+    "https://raw.githubusercontent.com/#{slug}/#{branch}/#{escaped}"
   end
 
   # Reads the `files:` blocks of a cimas.yml as text, and reports every place

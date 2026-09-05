@@ -94,6 +94,114 @@ cimas open-prs -f $CIMAS_CONFIG -r $CIMAS_WD \
 ----
 
 
+=== Syncing one file, not a whole group
+
+`cimas sync` writes *every* file a repo maps; `-g` selects repos, never files.
+So repairing one workflow across the fleet drags every other mapped template
+along with it. Measured on 2026-09-04, a plain `cimas sync -g data` would have
+made functional changes to `deploy.yml` in 30 repos, `check-index.yml` in 30,
+`crawler.yml` in 24 and `check_data.yml` in 3 — and wiped the per-repo `with:`
+branding that `relaton-data-ecma`, `relaton-data-calconnect` and
+`relaton-data-etsi` carry.
+
+There is no `--only-target` on `sync` (`cleanup-orphan-files` has one; `sync`
+does not). Narrow at the git level instead, between `sync` and `push`:
+
+[source,sh]
+----
+cimas pull -f $CIMAS_CONFIG -r $CIMAS_WD -g data
+
+cimas sync -f $CIMAS_CONFIG -r $CIMAS_WD -d $CIMAS_MASTER_DIR -g data
+
+KEEP=.github/workflows/keep-alive.yml
+
+# Keep one path; discard every other file cimas just wrote. Two steps, because
+# `restore` only reaches files that were already tracked: sync creates an
+# untracked file in any repo that did not have the mapped path yet.
+for d in "$CIMAS_WD"/*/; do
+  [ -d "$d/.git" ] || continue
+  git -C "$d" restore --staged --worktree -- . ":!$KEEP"
+  git -C "$d" ls-files --others --exclude-standard |
+    grep -vxF "$KEEP" |
+    while read -r f; do rm -f "$d/$f"; done
+done
+
+git -C $CIMAS_WD/relaton-data-rfcs status --porcelain   # spot-check one repo
+
+cimas push -f $CIMAS_CONFIG -r $CIMAS_WD -g data \
+  -b fix-keep-alive-target -m 'Point keep-alive at relaton/support'
+
+cimas open-prs -f $CIMAS_CONFIG -r $CIMAS_WD -g data \
+  -b fix-keep-alive-target -m 'Point keep-alive at relaton/support'
+----
+
+Three properties make this safe, none of them obvious from `cimas --help`:
+
+* `sync` writes and stages into the working copies and **pushes nothing**.
+  `push` is a separate command, so the narrowing step sits between them.
+* `push` calls `reset_onto`, which is `git reset <base>` — a *mixed* reset, not
+  `--hard`. Working-tree edits survive it, so the discarded files stay
+  discarded and only the kept path is staged and committed. `-k` is not needed,
+  and passing it would keep the wave branch from a previous run instead.
+* `push` skips any repo whose `git status --porcelain` is empty, so repos that
+  were already correct produce no branch and no PR.
+
+The `.` before the `:!` exclusion is deliberate. A bare exclude-only pathspec
+does work on git 2.50 — verified, not assumed — but older versions computed the
+positive match first and returned "no match" when there was none, which would
+make the `restore` a silent no-op and push the whole unscoped wave. The `.` is
+a no-op where the bare form already works, so keep it.
+
+Do not reach for `git clean` here. Its `-d` removes an untracked *directory*
+whole, and an exclude pathspec does not protect a file inside one — a repo
+receiving its first `.github/workflows/` file would lose the very file you meant
+to keep. `ls-files --others` enumerates files, never directories, so the
+exclusion holds. It leaves an empty directory behind, which git ignores.
+
+`$CIMAS_WD` holds throwaway clones. Never run this loop over a checkout you
+care about.
+
+Verify with a `workflow_dispatch` run per repo rather than waiting for the next
+cron. Check the result with `bin/cimas-orphan-audit --all --only-target <path>`.
+
+
+==== When a repo has already been disabled for inactivity
+
+GitHub disables a scheduled workflow after 60 days without repository activity.
+A disabled workflow does not fire its cron and cannot be started by
+`workflow_dispatch`, so **syncing a corrected file into such a repo does not
+restore it**. `keep-alive.yml` is usually the workflow that would have prevented
+this, which means it is usually disabled too and cannot re-enable itself.
+
+Re-enable over the API first, then sync:
+
+[source,sh]
+----
+gh api repos/relaton/<repo>/actions/workflows \
+  --jq '.workflows[] | select(.state=="disabled_inactivity") | .id' |
+  while read -r id; do
+    gh api -X PUT "repos/relaton/<repo>/actions/workflows/$id/enable"
+  done
+----
+
+To find them across the fleet before a wave. Take the slug from `CimasConfig`
+rather than the `cimas.yml` key: `loc_marc` and `loc_mods` are keyed differently
+from their GitHub names, and building the URL from the key 404s on both.
+
+[source,sh]
+----
+ruby -Ilib -rcimas_config -e 'c = CimasConfig.load; puts c.names.map { |n| c.slug(n) }' |
+  while read -r slug; do
+    gh api "repos/$slug/actions/workflows" \
+      --jq '.workflows[] | select(.state != "active") | "'"$slug"' \(.state) \(.path)"'
+  done
+----
+
+An active repo never reaches this state: its own commits reset the clock. The
+repos at risk are the dormant ones, where a broken keep-alive is invisible
+precisely because nothing else runs there either.
+
+
 === Cleaning up orphan files
 
 `cimas sync` writes the files `cimas.yml` maps. It never deletes the ones it

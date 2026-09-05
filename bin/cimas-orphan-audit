@@ -181,8 +181,13 @@ end
 # The first bytes of one file, over raw.githubusercontent.com with a Range
 # request, for a file too big to fetch whole. `gh api` cannot ask for a range.
 # Every relaton repo is public, so this needs no token.
+#
+# The URL comes from CimasConfig.raw_url, which escapes the path. Interpolating
+# it here raised URI::InvalidURIError on a destination path holding a space,
+# and the `rescue StandardError` below then reported a readable file as
+# unreadable — an exit-1 condition with no bearing on any Cimas file.
 def head_bytes(slug, branch, path, bytes: CimasConfig::HEADER_READ_BYTES)
-  uri = URI.parse("https://raw.githubusercontent.com/#{slug}/#{branch}/#{path}")
+  uri = URI.parse(CimasConfig.raw_url(slug, branch, path))
   http = Net::HTTP.new(uri.host, uri.port)
   http.use_ssl = true
   http.open_timeout = 15
