@@ -19,6 +19,13 @@ the Git repositories belonging to https://github.com/relaton[Relaton].
 `bin/cimas-orphan-audit`:: reports what `cimas cleanup-orphan-files` would
   delete, before anyone runs it
 
+`.github/deprecated-actions.yml`:: hand-curated list of deprecated GitHub
+  Actions majors. Read by `bin/actions-audit` and by
+  `spec/deprecated_actions_spec.rb`. See "Auditing GitHub Actions pins" below.
+
+`bin/actions-audit`:: reports GitHub Actions pins that have rotted — a
+  deprecated major, or an action that no longer exists upstream
+
 `data-index/`:: source of truth for the `relaton-data-*` GitHub Pages index
   sites — each repo's branding and published index URL (relaton/relaton#48).
   See `data-index/README.adoc`.
@@ -268,6 +275,57 @@ Two traps in the scope:
 * A repo whose `files:` is empty has *every* Cimas-written file orphaned, not
   one.
 
+
+=== Auditing GitHub Actions pins
+
+A `uses:` pin can rot in two ways, and only one of them is loud.
+
+A **deprecated** major still works, and goes on working until GitHub withdraws
+the runtime under it. An action that has been **deleted** upstream fails at
+once, in every repo that reaches the workflow — but that failure reads as a
+broken build rather than a broken pin, so it can stand for a long time.
+`metanorma/metanorma-build-scripts/plantuml-setup-action@main` stood in
+`make.yml` for about eleven months, red on every pull-request run in seven
+repos (relaton/support#63).
+
+`bin/actions-audit` checks both, over this repo's own `.github/workflows/` and
+over the Cimas caller templates in `cimas-config/gh-actions/`:
+
+[source,sh]
+----
+bin/actions-audit                  # both checks; needs `gh`, logged in
+bin/actions-audit --skip-resolve   # the deprecation check only, offline
+bin/actions-audit --list           # print every pin found, then stop
+bin/actions-audit --dry-run        # print the issues it would file
+----
+
+It reports; it never bumps a pin and never opens a pull request. It exits 1 on
+a finding, so a scheduled run goes red as well as filing an issue.
+
+Two things run it. `spec/deprecated_actions_spec.rb` runs the deprecation half
+on every pull request through `ci-spec.yml`, so a bad pin fails the build that
+introduces it. `.github/workflows/actions-audit.yml` runs both halves on the
+first Monday of February, May, August and November, and files one issue per
+rotten pin — that cadence gives two quarters of warning inside GitHub's usual
+six-month deprecation window.
+
+**A new deprecation is a new row**, never a code change. Add it to
+`.github/deprecated-actions.yml`:
+
+[source,yaml]
+----
+- action: actions/upload-artifact
+  deprecated_versions: ["v1", "v2", "v3"]
+  current_version: "v4"
+  notes: "v3 deprecation announced 2024-Q4."
+  reference: https://github.blog/changelog/...
+----
+
+Quote every version: an unquoted `4` is an Integer and would never match the
+`"v4"` a workflow pins. The specs enforce this.
+
+The schema matches `metanorma/ci`'s own `.github/deprecated-actions.yml`, so
+the two lists can be diffed as deprecations are announced.
 
 === Un-mapping a file on purpose
 

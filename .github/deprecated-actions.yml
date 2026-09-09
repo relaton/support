@@ -1,0 +1,123 @@
+---
+# Hand-curated list of deprecated GitHub Actions majors. Read by
+# `bin/actions-audit` and by `spec/deprecated_actions_spec.rb`, which fails the
+# build when a workflow in this repo pins a version listed here. Raised by
+# relaton/support#64.
+#
+# The list is hand-written because GitHub publishes no stable machine-readable
+# deprecation feed for action majors. A new deprecation is a new row; the code
+# never changes.
+#
+# Schema per row:
+#   action: <owner>/<action>          required
+#   deprecated_versions: [v1, ...]    required, quoted strings
+#   current_version: <ref>            optional, what to move to
+#   notes: "..."                      optional, why
+#   reference: https://...            optional, the announcement
+#
+# Quote every version. An unquoted `v4` is a string, but an unquoted `4` is an
+# Integer and would never equal the `"v4"` a workflow pins — the row would be
+# silently dead. spec/deprecated_actions_spec.rb enforces this.
+#
+# Scope: this repo's own `.github/workflows/` and the Cimas caller templates in
+# `cimas-config/gh-actions/`, which are copied into about 108 relaton repos.
+# The list is trimmed to actions relaton plausibly uses; it is not a mirror of
+# every deprecation GitHub has ever announced.
+#
+# This file cannot catch an action that was *deleted* upstream — the case that
+# motivated #64. `bin/actions-audit` catches that separately, by asking GitHub
+# whether each pin still resolves.
+#
+# Kept schema-compatible with `metanorma/ci`'s `.github/deprecated-actions.yml`
+# so the two lists can be diffed as new deprecations are announced.
+#
+# ---------------------------------------------------------------------------
+# Node20 is the next sunset, and this file does NOT flag it yet
+# ---------------------------------------------------------------------------
+#
+# Every row below deprecates a Node16-era major. The next wave is Node20.
+#
+# This repo pins SIX actions that declare `node20`, across 14 of its 37 pins.
+# Read from each action's own `runs.using`, which is the authority, on
+# 2026-09-09:
+#
+#   pinned now                          sites  target  target runtime
+#   actions/checkout@v4                     8  v6      node24
+#   actions/setup-node@v4                   1  v6      node24
+#   actions/configure-pages@v4              1  v6      node24
+#   actions/deploy-pages@v4                 1  v5      node24
+#   codecov/codecov-action@v4               1  v5      composite (no Node)
+#   peter-evans/repository-dispatch@v3      2  v4      node24
+#
+# Three traps for whoever does that bump:
+#
+#   - `actions/configure-pages@v5` is still node20. One major forward does not
+#     help; v6 is the first that does.
+#   - `actions/deploy-pages@v5` moved on 2026-09-01, so it is barely proven.
+#   - `codecov/codecov-action@v5` changed the token handling, and v5 onward are
+#     `composite`, not JavaScript actions at all.
+#
+# No row here flags any of them, deliberately. Adding those rows would turn the
+# pull-request gate red until all 14 sites move, and `data-deploy.yml` holds six
+# of them while Cimas syncs it into about 31 repos. That is a fleet change with
+# its own review and its own revert path — not a drive-by in the pull request
+# that introduces this tool. relaton/support#64 keeps the decision; the audit
+# reports it.
+#
+# Reading `runs.using` directly would catch this whole class with no curated row
+# at all, and would catch the configure-pages trap that a version-number rule
+# misses. That is a change to what this tool detects, so it is also #64's call,
+# not this file's.
+#
+# `current_version` below names the Node24 major in every case, so that whoever
+# acts on a finding moves forward rather than sideways.
+
+- action: actions/checkout
+  deprecated_versions: ["v1", "v2", "v3"]
+  current_version: "v6"
+  notes: >-
+    v3 and earlier run on Node16. v4 runs on Node20 and is not flagged here
+    yet; v5 and v6 run on Node24.
+
+- action: actions/setup-node
+  deprecated_versions: ["v1", "v2", "v3"]
+  current_version: "v5"
+  notes: "Node16-based majors. v4 runs on Node20, v5 on Node24."
+
+- action: actions/cache
+  deprecated_versions: ["v1", "v2", "v3"]
+  current_version: "v5"
+  notes: "Deprecated alongside the other Node16-based actions. v5 runs on Node24."
+
+- action: actions/setup-python
+  deprecated_versions: ["v1", "v2", "v3", "v4"]
+  current_version: "v6"
+  notes: "v4 and earlier run on Node16 or older. v5 runs on Node20, v6 on Node24."
+
+- action: actions/setup-java
+  deprecated_versions: ["v1", "v2", "v3"]
+  current_version: "v5"
+  notes: "v3 runs on Node16. v4 runs on Node20, v5 on Node24."
+
+- action: actions/upload-artifact
+  deprecated_versions: ["v1", "v2", "v3"]
+  current_version: "v4"
+  notes: >-
+    v3 deprecation announced 2024-Q4. v4 and v5 both run on Node20; no Node24
+    major ships yet, so v4 stays the suggestion.
+  reference: https://github.blog/changelog/2024-04-16-deprecation-notice-v3-of-the-artifact-actions/
+
+- action: actions/download-artifact
+  deprecated_versions: ["v1", "v2", "v3"]
+  current_version: "v4"
+  notes: "Deprecated alongside upload-artifact@v3."
+  reference: https://github.blog/changelog/2024-04-16-deprecation-notice-v3-of-the-artifact-actions/
+
+- action: peter-evans/repository-dispatch
+  deprecated_versions: ["v1", "v2"]
+  current_version: "v4"
+  notes: >-
+    v1 runs on Node12 and v2 on Node16. Read from the action's own
+    `runs.using`, not from a deprecation announcement, so this row carries no
+    reference. v3 runs on Node20 and is not flagged here yet; v4 runs on
+    Node24.

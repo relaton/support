@@ -1,0 +1,340 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+# Report every GitHub Actions pin in this repo that has rotted, and open an
+# issue for it. Read-only unless --create-issues says otherwise; this script
+# never bumps a pin and never opens a pull request. See relaton/support#64.
+#
+# Two things rot, and they rot differently:
+#
+#   DEPRECATED    the action still exists, but the major this repo pins is
+#                 deprecated upstream. Read from
+#                 .github/deprecated-actions.yml, which is hand-written,
+#                 because GitHub publishes no machine-readable deprecation
+#                 feed for action majors. Offline.
+#   UNRESOLVABLE  the action no longer exists at that ref. Read by asking
+#                 GitHub whether an action.yml is still there. Needs `gh`.
+#
+# The second check is the one that matters most here. The dead reference PR #63
+# removed — `metanorma/metanorma-build-scripts/plantuml-setup-action@main` —
+# was deleted upstream, not deprecated, so it could never appear on any curated
+# list. It failed on every pull-request run in seven repos for about eleven
+# months and nobody noticed. A list-only audit would have stayed silent
+# throughout.
+#
+# Both checks read the same pins, extracted from the YAML by lib/workflow_pins.rb.
+# The deprecation half also runs on every pull request through
+# spec/deprecated_actions_spec.rb, which fails the build about three months
+# before the quarterly cron would say the same thing. This script is what runs
+# on that cron, and what a person runs by hand.
+#
+# Scope: this repo's own `.github/workflows/`, plus the Cimas caller templates
+# in `cimas-config/gh-actions/`, which are copied into about 108 relaton repos.
+# What it does not cover: the workflows those repos write for themselves. Only
+# what this repo owns or syncs is auditable from here.
+#
+# Exit 0 when nothing is found, 1 when something is, and 2 when the run could
+# not be completed — an unreadable list, a missing `gh`, a rate limit, a failed
+# write. A failed read is never reported as a clean pin.
+#
+# Requires `gh`, logged in, unless --skip-resolve. A full run costs about one
+# call per distinct pin, plus two for the issue pass.
+#
+# Usage:
+#   bin/actions-audit                     # report only, both checks
+#   bin/actions-audit --skip-resolve      # report only, offline
+#   bin/actions-audit --list              # print every pin found, then stop
+#   bin/actions-audit --dry-run           # print the issues it would file
+#   bin/actions-audit --create-issues     # file them (what the cron runs)
+
+require "json"
+require "open3"
+require "optparse"
+
+require_relative "../lib/deprecated_actions"
+require_relative "../lib/workflow_pins"
+
+LABEL = "actions-audit"
+
+options = {
+  config: DeprecatedActions::DEFAULT_PATH,
+  repo: ENV.fetch("GITHUB_REPOSITORY", "relaton/support"),
+  create_issues: false,
+  dry_run: false,
+  skip_resolve: false,
+  list: false,
+}
+parser = OptionParser.new do |o|
+  o.banner = "Usage: bin/actions-audit [options]"
+  o.on("--create-issues", "File an issue per finding (default: report-only, " \
+                          "this script writes nothing)") do
+    options[:create_issues] = true
+  end
+  o.on("--dry-run", "Print the issues that would be filed, and file none") do
+    options[:dry_run] = true
+  end
+  o.on("--skip-resolve", "Skip the upstream existence check (needs no `gh`, " \
+                         "unless --create-issues is also given)") do
+    options[:skip_resolve] = true
+  end
+  o.on("--list", "Print every pin found, one per line, and exit") { options[:list] = true }
+  o.on("--config PATH", "Path to deprecated-actions.yml") do |v|
+    options[:config] = File.expand_path(v)
+  end
+  o.on("--repo SLUG", "Repo to read and file issues against") { |v| options[:repo] = v }
+  o.on("-h", "--help", "Show this help") do
+    puts o
+    exit
+  end
+end
+
+begin
+  parser.parse!(ARGV)
+rescue OptionParser::ParseError => e
+  warn e.message
+  warn parser.help
+  exit 2
+end
+
+# Asking to write and promising not to are the two things this cannot do at
+# once. Guessing which one was meant is how a report-only run files issues.
+if options[:dry_run] && options[:create_issues]
+  warn "--dry-run and --create-issues contradict each other; pick one"
+  exit 2
+end
+
+# `gh` for everything, as bin/cimas-orphan-audit does: it carries the
+# operator's login, so a private repo and a public one read the same way.
+#
+# The four states are kept apart deliberately. `absent` is an answer about the
+# action; every other failure is an answer about this run, and reporting one as
+# the other is how an audit invents a finding or hides one.
+def gh(*args)
+  out, err, status = Open3.capture3("gh", *args)
+  return [:ok, out] if status.success?
+
+  message = "#{out}#{err}".strip
+  return [:rate_limit, message] if message.include?("rate limit exceeded")
+  return [:absent, message] if message.match?(/HTTP 404|Not Found/i)
+
+  [:error, message]
+rescue Errno::ENOENT
+  [:no_gh, "the `gh` CLI is not installed; run with --skip-resolve to stay offline"]
+end
+
+# Where an action's definition lives, given its pin. Three shapes, because a
+# `uses:` can name a repo, a directory inside one, or a reusable workflow file.
+def definition_paths(action)
+  owner, repo, *rest = action.split("/")
+  return nil if repo.nil? || repo.empty?
+
+  sub = rest.join("/")
+  files =
+    if sub.empty?
+      %w[action.yml action.yaml]
+    elsif sub.end_with?(".yml", ".yaml")
+      [sub]
+    else
+      ["#{sub}/action.yml", "#{sub}/action.yaml"]
+    end
+  files.map { |path| "repos/#{owner}/#{repo}/contents/#{path}" }
+end
+
+# :ok, :absent, or a failure state. `--silent` keeps the file body off the wire
+# and out of memory; only the status of the read is wanted.
+#
+# One case this cannot separate: GitHub answers 404 for a repo the token may
+# not see, so a private action reads the same as a deleted one. Every action
+# pinned here is public, and the runner's own token could not use a private one
+# either, so a 404 is the right answer for this repo. A fleet-wide version of
+# this check would need to tell the two apart.
+def resolves?(action, ref)
+  paths = definition_paths(action)
+  return [:error, "not an owner/repo action: #{action}"] if paths.nil?
+
+  last = nil
+  paths.each do |path|
+    state, message = gh("api", "#{path}?ref=#{ref}", "--silent")
+    return [:ok, nil] if state == :ok
+    return [state, message] unless state == :absent
+
+    last = message
+  end
+  [:absent, last]
+end
+
+Finding = Struct.new(:kind, :pin, :entry, keyword_init: true)
+
+begin
+  pins = WorkflowPins.scan
+rescue WorkflowPins::Error => e
+  warn "could not read the workflows: #{e.message}"
+  exit 2
+end
+
+if options[:list]
+  pins.each { |pin| puts format("%s:%d\t%s", pin.file, pin.line, pin) }
+  exit
+end
+
+begin
+  list = DeprecatedActions.load(options[:config])
+rescue DeprecatedActions::Error, Psych::SyntaxError => e
+  warn e.message
+  exit 2
+end
+
+findings = pins.filter_map do |pin|
+  entry = list.finding_for(pin)
+  Finding.new(kind: :deprecated, pin: pin, entry: entry) if entry
+end
+
+unless options[:skip_resolve]
+  # One read per distinct pin, not per occurrence: the eight
+  # `actions/checkout@v4` sites are one question.
+  cache = {}
+  pins.each do |pin|
+    state, message = cache[[pin.action, pin.ref]] ||= resolves?(pin.action, pin.ref)
+
+    case state
+    when :ok then next
+    when :absent then findings << Finding.new(kind: :unresolvable, pin: pin)
+    when :rate_limit
+      warn "GitHub rate limit exceeded. Run `gh api rate_limit --jq .resources.core` " \
+           "for the reset time, then run this again."
+      exit 2
+    else
+      # Not an answer about the action. Calling it absent would file an issue
+      # about a pin that is perfectly fine.
+      warn "could not check #{pin}: #{message}"
+      exit 2
+    end
+  end
+end
+
+unless findings.empty?
+  state_w = findings.map { |f| f.kind.to_s.length }.max
+  pin_w = findings.map { |f| f.pin.to_s.length }.max
+  where_w = findings.map { |f| "#{f.pin.file}:#{f.pin.line}".length }.max
+  header = format("%-#{state_w}s  %-#{pin_w}s  %-#{where_w}s  %s",
+                  "state", "pin", "where", "note")
+  puts header
+  puts "-" * header.length
+
+  findings.each do |finding|
+    note =
+      if finding.kind == :unresolvable
+        "no action definition at that ref"
+      else
+        [finding.entry["current_version"] && "use #{finding.entry['current_version']}",
+         finding.entry["notes"]].compact.join(" - ")
+      end
+    puts format("%-#{state_w}s  %-#{pin_w}s  %-#{where_w}s  %s",
+                finding.kind.to_s.upcase, finding.pin,
+                "#{finding.pin.file}:#{finding.pin.line}", note)
+  end
+end
+
+# One issue per (kind, action, ref), not per occurrence — nine files pinning
+# the same rotten action are one piece of work.
+def issue_title(kind, pin)
+  label = kind == :unresolvable ? "Unresolvable" : "Deprecated"
+  # No file count here, deliberately. The reference implementation puts one in
+  # the title, which makes the title the dedupe key AND a moving number: fix one
+  # of three files and the title changes, the dedupe misses, and a second issue
+  # opens beside the first. The count belongs in the body.
+  "[actions-audit] #{label} pin: #{pin}"
+end
+
+def issue_body(kind, instances)
+  pin = instances.first.pin
+  entry = instances.first.entry
+  body = +""
+
+  if kind == :unresolvable
+    body << "## Pinned action does not resolve\n\n"
+    body << "`#{pin}` has no `action.yml` at that ref. The action was most " \
+            "likely deleted or renamed upstream.\n\n"
+    body << "A step referencing it fails the moment the runner tries to load " \
+            "it, in every repo that reaches this workflow. That failure looks " \
+            "like a broken build, not like a broken pin, so it can stand for a " \
+            "long time — `plantuml-setup-action` stood for about eleven months " \
+            "(relaton/support#63).\n\n"
+  else
+    body << "## Deprecated action pin\n\n"
+    body << "- **Action**: `#{pin.action}`\n"
+    body << "- **Pinned version**: `#{pin.ref}`\n"
+    body << "- **Suggested version**: `#{entry['current_version']}`\n" if entry["current_version"]
+    body << "- **Notes**: #{entry['notes']}\n" if entry["notes"]
+    body << "- **Reference**: #{entry['reference']}\n" if entry["reference"]
+    body << "\n"
+  end
+
+  body << "## Where it is pinned (#{instances.size})\n\n"
+  instances.each { |f| body << "- `#{f.pin.file}`:#{f.pin.line}\n" }
+  body << "\n---\n\nSurfaced by `bin/actions-audit` "
+  body << "(`.github/workflows/actions-audit.yml`, relaton/support#64). "
+  body << "Surface-only; nothing was bumped. Fix the pin in each file above, "
+  body << "check the workflow still runs, then close this issue.\n\n"
+  body << "\u{1F916}\n"
+  body
+end
+
+by_class = findings.group_by { |f| [f.kind, f.pin.action, f.pin.ref] }
+
+if options[:dry_run]
+  by_class.each do |(kind, _action, _ref), instances|
+    puts "\n[dry-run] would file:"
+    puts "  title: #{issue_title(kind, instances.first.pin)}"
+    puts issue_body(kind, instances).lines.map { |l| "  | #{l}" }.join
+  end
+elsif options[:create_issues] && !findings.empty?
+  # The label has to exist before `gh issue create --label` is asked for it,
+  # and it does not exist in a repo that has never run this. `--force` updates
+  # it in place when it does.
+  state, message = gh("label", "create", LABEL, "--repo", options[:repo],
+                      "--color", "B60205",
+                      "--description", "Raised by bin/actions-audit", "--force")
+  unless state == :ok
+    warn "could not create the #{LABEL} label: #{message}"
+    exit 2
+  end
+
+  state, out = gh("issue", "list", "--repo", options[:repo], "--state", "open",
+                  "--label", LABEL, "--json", "title", "--limit", "100")
+  unless state == :ok
+    # Without the open list there is no dedupe, and filing anyway would open a
+    # second copy of every issue that already stands.
+    warn "could not list the open #{LABEL} issues: #{out}"
+    exit 2
+  end
+  open_titles = JSON.parse(out).map { |issue| issue["title"] }
+
+  failed = 0
+  by_class.each do |(kind, _action, _ref), instances|
+    title = issue_title(kind, instances.first.pin)
+    if open_titles.include?(title)
+      warn "already open, skipping: #{title}"
+      next
+    end
+
+    state, message = gh("issue", "create", "--repo", options[:repo],
+                        "--title", title, "--body", issue_body(kind, instances),
+                        "--label", LABEL)
+    if state == :ok
+      warn "filed: #{title}"
+    else
+      warn "could not file #{title}: #{message}"
+      failed += 1
+    end
+  end
+  exit 2 if failed.positive?
+end
+
+deprecated = findings.count { |f| f.kind == :deprecated }
+unresolvable = findings.count { |f| f.kind == :unresolvable }
+checked = options[:skip_resolve] ? " (not checked)" : ""
+warn "#{pins.size} pin(s) in #{pins.map(&:file).uniq.size} file(s); " \
+     "#{deprecated} deprecated, #{unresolvable} unresolvable#{checked}"
+
+exit 1 unless findings.empty?

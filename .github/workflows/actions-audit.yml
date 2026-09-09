@@ -1,0 +1,68 @@
+name: actions-audit
+
+# Quarterly sweep for GitHub Actions pins that have rotted, in this repo's own
+# workflows and in the Cimas caller templates it syncs into the fleet. Files an
+# issue per finding. Surface-only: nothing here bumps a pin or opens a PR.
+# See relaton/support#64, and bin/actions-audit for what the two checks are.
+#
+# The deprecation half also runs on every pull request, through
+# spec/deprecated_actions_spec.rb and ci-spec.yml. This cron exists for the
+# other half of the problem: a deprecation announced, or an action deleted,
+# between pull requests. Nobody has to push anything for this to notice.
+#
+# Cadence is quarterly, which gives two quarters of warning inside GitHub's
+# typical six-month deprecation window.
+
+on:
+  schedule:
+    # First Monday of Feb, May, Aug and Nov at 08:00 UTC.
+    #
+    # Written as "every Monday in those months", with the day-of-month test in
+    # the job below, because cron cannot express "first Monday" on its own:
+    # when both the day-of-month and the day-of-week field are restricted, cron
+    # ORs them rather than ANDing them. `0 8 1-7 2,5,8,11 1` therefore fires on
+    # days 1-7 AND on every Monday — about ten runs a month, not one.
+    - cron: '0 8 * 2,5,8,11 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      # A manual run is never gated; only the weekly cron above is narrowed
+      # down to the first Monday.
+      - name: First Monday of the month only
+        id: gate
+        run: |
+          set -euo pipefail
+          if [ "${{ github.event_name }}" != "schedule" ] || [ "$(date -u +%-d)" -le 7 ]; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=false" >> "$GITHUB_OUTPUT"
+            echo "Not the first Monday of the month; nothing to do."
+          fi
+
+      - if: steps.gate.outputs.run == 'true'
+        uses: actions/checkout@v4
+
+      - if: steps.gate.outputs.run == 'true'
+        uses: ruby/setup-ruby@v1
+        with:
+          # Matches ci-spec.yml, so a stdlib difference cannot pass the specs
+          # and fail here.
+          ruby-version: "3.4"
+          bundler-cache: false
+
+      # Exits 1 on a finding, so the run goes red as well as filing the issue.
+      # Two independent signals: the issue is the one a person reads, the red
+      # run is the one that shows up without anyone looking.
+      - name: Audit the action pins
+        if: steps.gate.outputs.run == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: bin/actions-audit --create-issues
