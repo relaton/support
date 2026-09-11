@@ -95,6 +95,10 @@ jobs:
           fi
           allow='${{ inputs.ruby_versions }}'
 
+          # Windows jobs go first. Windows is the slowest runner, and GitHub
+          # starts matrix jobs in list order, so under max-parallel a Windows
+          # job at the end starts last and the run waits for it. sort_by is
+          # stable, so the gem × ruby order inside each OS group stays.
           combined=$(echo "$ruby_matrix" | jq --argjson gems "$gems_array" --arg allow "$allow" '
             (if $allow == "" then .ruby
              else .ruby | map(select(.version as $v | ($allow | split(",") | index($v))))
@@ -102,12 +106,12 @@ jobs:
             $gems as $gem_list |
             .os as $os_list |
             {
-              "include": [
+              "include": ([
                 $gem_list[] as $gem |
                 $ruby_configs[] as $ruby |
                 $os_list[] as $os |
                 { "gem": $gem, "ruby": $ruby, "os": $os }
-              ]
+              ] | sort_by(.os | startswith("windows") | not))
             }
           ')
 
