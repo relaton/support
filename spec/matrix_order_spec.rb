@@ -17,7 +17,10 @@ RSpec.describe "OS order in the workflow matrices" do
 
     # The matrix is built by jq inside a shell script, so run that jq program
     # for real. A structural check of the YAML cannot see the job order.
-    combine = script[/\| jq --argjson gems "\$gems_array" --arg allow "\$allow" '([^']*)'/, 1] or
+    # The jq call spans several lines (one `--arg` per line), so anchor on the
+    # unique `--argjson gems "$gems_array"` token and consume up to the opening
+    # quote of the program. `[^']` already crosses newlines.
+    combine = script[/--argjson gems "\$gems_array"[^']*'([^']*)'/, 1] or
       raise "combined-matrix jq program not found"
     default_ruby = script[/default_ruby_version=\$\(echo "\$combined" \| jq -r '([^']*)'\)/, 1] or
       raise "default-ruby jq program not found"
@@ -42,7 +45,10 @@ RSpec.describe "OS order in the workflow matrices" do
     end
 
     let(:combined) do
-      jq(combine, ruby_matrix.to_json, "--argjson", "gems", gems.to_json, "--arg", "allow", "")
+      jq(combine, ruby_matrix.to_json,
+         "--argjson", "gems", gems.to_json, "--arg", "allow", "",
+         "--arg", "gemdir", "gems", "--argjson", "include_root", "false",
+         "--arg", "root_name", "root")
     end
     let(:jobs) { JSON.parse(combined).fetch("include") }
     let(:labels) { jobs.map { |j| [j["gem"], j.dig("ruby", "version"), j["os"]] } }
@@ -69,9 +75,37 @@ RSpec.describe "OS order in the workflow matrices" do
         .to eq(gems.product(%w[3.3 3.4 4.0], %w[macos-latest ubuntu-latest]))
     end
 
+    it "gives each subdirectory gem a gems/<name> working directory" do
+      expect(jobs.map { |j| j["dir"] }.uniq)
+        .to contain_exactly("gems/relaton-cli", "gems/relaton-foo")
+    end
+
     it "keeps the default Ruby at the first non-experimental version" do
       # The codecov upload matches on this value.
       expect(jq(default_ruby, combined, "-r").strip).to eq("3.3")
+    end
+
+    context "with include_root true" do
+      let(:combined) do
+        jq(combine, ruby_matrix.to_json,
+           "--argjson", "gems", gems.to_json, "--arg", "allow", "",
+           "--arg", "gemdir", "gems", "--argjson", "include_root", "true",
+           "--arg", "root_name", "root")
+      end
+
+      it "adds the repo-root gem with working directory '.'" do
+        root = jobs.select { |j| j["gem"] == "root" }
+        expect(root.size).to eq(ruby_matrix["ruby"].size * ruby_matrix["os"].size)
+        expect(root.map { |j| j["dir"] }.uniq).to eq(["."])
+      end
+
+      it "still puts every Windows job (both gems and the root) first" do
+        oses = jobs.map { |j| j["os"] }
+        windows = oses.count("windows-latest")
+
+        expect(windows).to eq((gems.size + 1) * 3)
+        expect(oses.first(windows)).to all(eq("windows-latest"))
+      end
     end
   end
 
