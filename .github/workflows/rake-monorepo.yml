@@ -15,6 +15,24 @@ on:
         required: false
         type: string
         default: 'gems'
+      include_root:
+        description: >-
+          Also test the gem at the repo root (working directory "."), not only
+          the per-gem subdirectories. Use for a monorepo whose primary gem lives
+          at the root with satellite gems under gem_directory.
+        required: false
+        type: boolean
+        default: false
+      root_gem_name:
+        description: 'Display name for the repo-root gem when include_root is true'
+        required: false
+        type: string
+        default: 'root'
+      skip-java-setup:
+        description: 'Whether to skip Java setup (matches metanorma/ci generic-rake.yml)'
+        required: false
+        type: boolean
+        default: false
       ruby_versions:
         description: >-
           Comma-separated allowlist of Ruby versions to keep from the upstream
@@ -94,24 +112,41 @@ jobs:
             gems_array='[]'
           fi
           allow='${{ inputs.ruby_versions }}'
+          gemdir='${{ inputs.gem_directory }}'
+          include_root='${{ inputs.include_root }}'
+          root_name='${{ inputs.root_gem_name }}'
 
+          # Each entry carries its own working directory "dir": gemdir/<gem> for
+          # a subdirectory gem, or "." for the repo-root gem (include_root).
+          #
           # Windows jobs go first. Windows is the slowest runner, and GitHub
           # starts matrix jobs in list order, so under max-parallel a Windows
           # job at the end starts last and the run waits for it. sort_by is
           # stable, so the gem × ruby order inside each OS group stays.
-          combined=$(echo "$ruby_matrix" | jq --argjson gems "$gems_array" --arg allow "$allow" '
+          combined=$(echo "$ruby_matrix" | jq \
+            --argjson gems "$gems_array" \
+            --arg allow "$allow" \
+            --arg gemdir "$gemdir" \
+            --argjson include_root "$include_root" \
+            --arg root_name "$root_name" '
             (if $allow == "" then .ruby
              else .ruby | map(select(.version as $v | ($allow | split(",") | index($v))))
              end) as $ruby_configs |
             $gems as $gem_list |
             .os as $os_list |
             {
-              "include": ([
-                $gem_list[] as $gem |
-                $ruby_configs[] as $ruby |
-                $os_list[] as $os |
-                { "gem": $gem, "ruby": $ruby, "os": $os }
-              ] | sort_by(.os | startswith("windows") | not))
+              "include": (
+                ([ $gem_list[] as $gem |
+                   $ruby_configs[] as $ruby |
+                   $os_list[] as $os |
+                   { "gem": $gem, "dir": ($gemdir + "/" + $gem), "ruby": $ruby, "os": $os } ]
+                 + (if $include_root then
+                      [ $ruby_configs[] as $ruby |
+                        $os_list[] as $os |
+                        { "gem": $root_name, "dir": ".", "ruby": $ruby, "os": $os } ]
+                    else [] end))
+                | sort_by(.os | startswith("windows") | not)
+              )
             }
           ')
 
@@ -140,12 +175,18 @@ jobs:
       matrix: ${{ fromJson(needs.prepare.outputs.combined_matrix) }}
     defaults:
       run:
-        working-directory: ${{ format('{0}/{1}', inputs.gem_directory, matrix.gem) }}
+        working-directory: ${{ matrix.dir }}
 
     steps:
       - uses: actions/checkout@v6
         with:
           submodules: true
+
+      - if: ${{ !inputs.skip-java-setup }}
+        uses: actions/setup-java@v5
+        with:
+          distribution: 'temurin'
+          java-version: '17'
 
       - uses: ruby/setup-ruby@v1
         with:
@@ -153,14 +194,14 @@ jobs:
           bundler-cache: true
           rubygems: ${{ matrix.ruby.rubygems }}
           bundler: ${{ matrix.ruby.bundler }}
-          working-directory: ${{ format('{0}/{1}', inputs.gem_directory, matrix.gem) }}
+          working-directory: ${{ matrix.dir }}
 
       - run: bundle exec rake
 
       - if: needs.prepare.outputs.public == 'true' && matrix.os == 'ubuntu-latest' && matrix.ruby.version == needs.prepare.outputs.default_ruby_version
         uses: codecov/codecov-action@v4
         with:
-          file: ${{ format('{0}/{1}/coverage/.resultset.json', inputs.gem_directory, matrix.gem) }}
+          file: ${{ format('{0}/coverage/.resultset.json', matrix.dir) }}
 
   tests-passed:
     needs: rake-monorepo
