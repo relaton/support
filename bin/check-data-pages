@@ -5,10 +5,14 @@
 # data-index/configs.yml this checks two URLs and prints their HTTP status:
 #
 #   site      - https://relaton.github.io/relaton-data-<repo>/  (the Pages site)
-#   raw-index - the index the relaton gems fetch from the data repo. configs.yml
-#               does not name it: this probes DataIndexConfig::INDEX_FILES under
-#               the repo's baseurl, newest first, and reports the first 200.
-#               A repo serving none of them publishes no consumable index.
+#   raw-index - the index the relaton gems fetch from the data repo. Nothing
+#               here names it and nothing guesses: the site's own
+#               index/manifest.json carries `index`, which `relaton index`
+#               resolved from the flavor's `Relaton::<Flavor>::INDEXFILE`. So
+#               this reads the manifest and checks exactly the name the gems
+#               will fetch. A repo with no manifest fails this check — its site
+#               predates the machine index, which is the rollout state this
+#               command exists to report.
 #
 # The raw-index check does not gate the Pages build. data-deploy.yml builds the
 # site with `relaton index` over the repo's own data/ folder and never fetches
@@ -104,6 +108,45 @@ rescue StandardError => e
   "ERR:#{e.class.to_s.split('::').last}"
 end
 
+# The manifest body, or a token saying why there is none. A GET, unlike the
+# checks above: the manifest is a few hundred bytes and its content is the
+# point. A site that answers without one is a rollout state; a site this
+# command could not reach at all is an error, and the two must not print alike.
+# => [body, nil] on 200, [nil, "NOMANIFEST"] when the site answered without
+# one, [nil, "ERR:..."] when it could not be reached. A tuple, so a body can
+# never be mistaken for a token or the other way round.
+def fetch_manifest(url, timeout:)
+  uri = URI.parse(url)
+  return [nil, "BADURI"] unless uri.is_a?(URI::HTTP)
+
+  http = Net::HTTP.new(uri.host, uri.port)
+  http.use_ssl = (uri.scheme == "https")
+  http.open_timeout = timeout
+  http.read_timeout = timeout
+  res = http.request_get(uri.request_uri)
+  res.is_a?(Net::HTTPSuccess) ? [res.body, nil] : [nil, "NOMANIFEST"]
+rescue StandardError => e
+  [nil, "ERR:#{e.class.to_s.split('::').last}"]
+end
+
+# The status and URL of the index the site's manifest names, as [status, url].
+# There is no second guess to make, so a site with no usable manifest reports
+# against the manifest URL instead: "NOMANIFEST" when the site answered but
+# published none (a build that predates the machine index — the rollout state
+# this command exists to report), or the fetch's own "ERR:..." when the site
+# could not be reached at all.
+def resolve_raw_index(config, repo, base:, timeout:)
+  manifest = config.manifest_url(repo, base: base)
+  body, error = fetch_manifest(manifest, timeout: timeout)
+  name = DataIndexConfig.index_from_manifest(body)
+  # A body that parses to no name is a manifest the site published and this
+  # command cannot use — same report as no manifest at all.
+  return [error || "NOMANIFEST", manifest] unless name
+
+  url = config.raw_index_url(repo, name)
+  [http_status(url, timeout: timeout), url]
+end
+
 checks = []
 checks << :site if options[:site]
 checks << :raw if options[:raw]
@@ -135,14 +178,11 @@ selected.each do |repo|
   end
 
   if options[:raw]
-    # DataIndexConfig walks the candidates; this supplies the HTTP status for
-    # each and stops at the first 200.
-    st, url = config.first_live_index(repo) { |u| http_status(u, timeout: options[:timeout]) }
+    # The site's manifest names the index; this checks that one name.
+    st, url = resolve_raw_index(config, repo, base: options[:base],
+                                              timeout: options[:timeout])
     statuses[:raw] = st
-    row += "  #{format('%-4s', st)} #{url}"
-    # On a total miss the URL above shows only the last name tried, which reads
-    # as if that were the expected one. Say what was actually probed.
-    row += " (none of #{DataIndexConfig::INDEX_FILES.join(', ')})" unless st == 200
+    row += "  #{format('%-10s', st)} #{url}"
   end
 
   puts row

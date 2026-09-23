@@ -42,12 +42,18 @@ RSpec.describe WorkflowPins do
 
     # The upstream regex's second blind spot: `\s*$` cannot follow a comment.
     it "finds a pin that carries a trailing comment" do
-      pin = pins_in(".github/workflows/data-deploy.yml")
-            .find { |p| p.line == 250 }
+      # Located by content, not by a line number: an edit anywhere above it
+      # used to fail this example for a reason that had nothing to do with it.
+      path = ".github/workflows/data-deploy.yml"
+      commented = File.readlines(File.expand_path("../#{path}", __dir__))
+                      .index { |l| l.match?(/- uses: \S+ +#/) }
+      expect(commented).not_to be_nil, "#{path} carries no commented pin any more"
+
+      pin = pins_in(path).find { |p| p.line == commented + 1 }
+
       expect(pin).not_to be_nil,
-                         "data-deploy.yml:250 is `- uses: actions/checkout@v4 " \
-                         "# the data repo (has ./data)`; a pin with a comment " \
-                         "after it must still be extracted"
+                         "#{path}:#{commented + 1} is a `- uses:` with a comment " \
+                         "after it; such a pin must still be extracted"
       expect(pin.to_s).to eq("actions/checkout@v4")
     end
 

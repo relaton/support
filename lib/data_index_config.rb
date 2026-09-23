@@ -1,3 +1,4 @@
+require "json"
 require "yaml"
 
 # Reads `data-index/configs.yml`, the single source of truth for the
@@ -8,10 +9,10 @@ require "yaml"
 #   bin/index-branding   -> #branding, run by the "Resolve branding" step of
 #                           .github/workflows/data-deploy.yml, which passes the
 #                           result to `relaton index` as --title/--favicon/
-#                           --description.
-#   bin/check-data-pages -> #pages_url and #raw_index_urls, the rollout gate that
-#                           requires 200 from the site and from one of the index
-#                           candidates.
+#                           --description/--pubid-flavor.
+#   bin/check-data-pages -> #pages_url, #manifest_url and #raw_index_url, the
+#                           rollout gate that requires 200 from the site and
+#                           from the index the site's own manifest names.
 #
 # This class used to also render a Jekyll `_config.yml` per repo. support#58
 # (relaton/relaton#83) replaced that build with `relaton index`, which reads each
@@ -26,17 +27,12 @@ class DataIndexConfig
   # repo serves Pages from a custom domain.
   PAGES_HOST = "https://relaton.github.io".freeze
 
-  # The index filenames a data repo may publish, newest first.
-  #
-  # This file used to carry a per-row `source:` naming the one each repo served.
-  # That key was a hand-copied echo of a fact that lives on
-  # raw.githubusercontent.com, and it drifted twice: `iana` named an index its
-  # repo had not published yet, `ietf` named one its repo had deleted. So
-  # bin/check-data-pages probes these names instead and takes the first 200.
-  #
-  # Newest first matters. A repo mid-migration can serve two names at once, and
-  # oldest-first would report the one it is retiring.
-  INDEX_FILES = %w[index-v3.yaml index-v2.yaml index-v1.yaml].freeze
+  # A monolith BASE name as the manifest carries it: one path segment and no
+  # extension, because #raw_index_url appends `.yaml`. So a manifest reading
+  # `"index": "index-v2.yaml"` is rejected rather than turned into
+  # `index-v2.yaml.yaml`, a dead URL that would report a healthy site as broken.
+  # Stricter than the generator's own `--index-name` check, which allows a dot.
+  INDEX_NAME = /\A[A-Za-z0-9][A-Za-z0-9_-]*\z/.freeze
 
   attr_reader :defaults, :repos
 
@@ -80,7 +76,24 @@ class DataIndexConfig
   # derivation produced before this method existed — "<FLAVOR> Index" and no
   # branding. spec/cimas_data_pages_spec.rb is what makes the gap loud.
   #
-  # => { "title" => String, "favicon" => String, "description" => String }
+  # It also carries the machine-index flags, which are not branding but travel
+  # the same path: configs.yml -> bin/index-branding -> $GITHUB_OUTPUT -> the
+  # build step. They cannot ride in a caller `with:` block for the same reason
+  # the branding cannot.
+  #
+  # `machine_index` is "false" only on the fallback path. `--pubid-flavor` is
+  # mandatory since relaton#114, so a repo with no row and no flavor would fail
+  # its Pages build outright; `--no-machine-index` builds the human site
+  # instead, which is what such a repo published before any of this existed.
+  #
+  # There is no `index_name`: `relaton index` derives the published index's
+  # name from the flavor's own `INDEXFILE`, so the flavor is the whole input.
+  # `--index-name` exists for a corpus that is not a relaton flavor, and every
+  # row here is one.
+  #
+  # => { "title" => String, "favicon" => String, "description" => String,
+  #      "pubid_flavor" => String, "machine_index" => String,
+  #      "publish_data" => String }
   def branding(repo, title: nil, favicon: nil, description: nil)
     found = find_entry(self.class.flavor(repo))
 
@@ -88,6 +101,13 @@ class DataIndexConfig
       "title" => present(title) || (found ? entry_title(found) : derived_title(repo)),
       "favicon" => present(favicon) || (found ? entry_favicon(found) : ""),
       "description" => present(description) || (found ? entry_description(found) : ""),
+      "pubid_flavor" => found ? present(found["pubid_flavor"]).to_s : "",
+      # Keyed on the flavor, not on the row: a row that lost its
+      # `pubid_flavor` to a bad merge would otherwise ask for a machine index
+      # and hand the build `--pubid-flavor ""`. spec/data_index_config_spec.rb
+      # catches such a row at PR time; this keeps the deploy building anyway.
+      "machine_index" => found && present(found["pubid_flavor"]) ? "true" : "false",
+      "publish_data" => found && found["publish_data"] ? "true" : "false",
     }
   end
 
@@ -98,31 +118,37 @@ class DataIndexConfig
     "#{base.chomp('/')}/relaton-data-#{repo}/"
   end
 
-  # Every index URL a data repo might serve: `baseurl` (repo + real default
-  # branch) + each INDEX_FILES name, newest first. Nothing here knows which one
-  # a repo publishes today, and nothing needs to — bin/check-data-pages requires
-  # 200 from the first that answers.
-  def raw_index_urls(repo)
-    e = entry(repo)
-    INDEX_FILES.map { |file| "#{baseurl(e)}#{file}" }
+  # The machine index's manifest on the Pages site. It carries `"index"`, the
+  # base name of the monolith that build published — `relaton index` resolved
+  # it from the flavor's own `Relaton::<Flavor>::INDEXFILE`, so the manifest is
+  # that constant, carried by the build that used it. This file names no index
+  # and guesses none: a `source:` key drifted here twice before it was removed,
+  # and a candidate list would have to be hand-edited each time a flavor bumps
+  # its index version.
+  def manifest_url(repo, base: PAGES_HOST)
+    "#{pages_url(repo, base: base)}index/manifest.json"
   end
 
-  # Pick the index a repo actually serves: the first candidate the block reports
-  # 200 for, as `[status, url]`. The block takes a URL and returns its HTTP
-  # status; it lives in bin/check-data-pages so this class stays offline and the
-  # choosing logic stays under test.
-  #
-  # With no candidate live, this returns the last one tried rather than nil, so
-  # a caller has a status to print. That is the oldest name, which is NOT a
-  # statement that the repo should serve it — bin/check-data-pages says which
-  # names it probed when it reports the miss.
-  def first_live_index(repo, &probe)
-    last = nil
-    raw_index_urls(repo).each do |url|
-      last = [probe.call(url), url]
-      return last if last.first == 200
-    end
-    last
+  # The raw URL for one index name — the manifest's answer turned into the URL
+  # the relaton gems fetch.
+  def raw_index_url(repo, name)
+    "#{baseurl(entry(repo))}#{name}.yaml"
+  end
+
+  # The monolith base name a manifest body names, or nil. Everything that is not
+  # a plain file name is nil: the value is pasted into a URL, and the body may
+  # be a 404 page, an empty response or a truncated file. Kept pure so the
+  # checker stays the only part that touches the network.
+  def self.index_from_manifest(body)
+    data = JSON.parse(body.to_s)
+    return nil unless data.is_a?(Hash)
+
+    name = data["index"]
+    return nil unless name.is_a?(String) && INDEX_NAME.match?(name)
+
+    name
+  rescue JSON::ParserError
+    nil
   end
 
   private

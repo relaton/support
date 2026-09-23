@@ -10,7 +10,9 @@
 # three flags unconditionally, and a repo added to cimas.yml before its
 # configs.yml row lands must still resolve rather than fail its own deploy.
 require "English" # $CHILD_STATUS
+require "fileutils"
 require "shellwords"
+require "tempfile"
 
 require "data_index_config"
 
@@ -84,9 +86,13 @@ RSpec.describe "DataIndexConfig branding" do
         title: "Custom", favicon: "custom.ico", description: "Custom desc",
       )
 
-      expect(branding).to eq(
+      # Only the three branding values take a caller override. The
+      # machine-index flags have no caller input at all, so they keep resolving
+      # from configs.yml whatever the caller passes.
+      expect(branding).to include(
         "title" => "Custom", "favicon" => "custom.ico", "description" => "Custom desc",
       )
+      expect(branding).to include("pubid_flavor" => "iso", "machine_index" => "true")
     end
 
     it "treats an explicit blank override as unset" do
@@ -108,7 +114,9 @@ RSpec.describe "DataIndexConfig branding" do
       # cimas.yml before its row lands would otherwise fail its own Pages build.
       # Its result must match what the retired shell derivation produced.
       expect(config.branding("relaton/relaton-data-sdo"))
-        .to eq("title" => "SDO Index", "favicon" => "", "description" => "")
+        .to eq("title" => "SDO Index", "favicon" => "", "description" => "",
+               "pubid_flavor" => "", "machine_index" => "false",
+               "publish_data" => "false")
     end
 
     it "does not raise for an unknown repo, unlike #entry" do
@@ -133,6 +141,97 @@ RSpec.describe "DataIndexConfig branding" do
         expect(branding.values).to all(be_a(String)),
                                    "#{name} resolved a non-String: #{branding.inspect}"
         expect(branding["title"]).not_to be_empty
+      end
+    end
+  end
+
+  # The flags `relaton index` needs to build the machine index. --pubid-flavor
+  # is mandatory there (relaton#114), so an unresolved flavor is a failed Pages
+  # build, not a page missing its favicon.
+  describe "#branding machine-index flags" do
+    it "emits the flavor a repo's row names" do
+      expect(config.branding("relaton/relaton-data-iso")["pubid_flavor"]).to eq("iso")
+      expect(config.branding("relaton/relaton-data-itu-r")["pubid_flavor"]).to eq("itu")
+    end
+
+    it "asks for a machine index for every repo configs.yml covers" do
+      config.repos.each do |entry|
+        branding = config.branding(entry.fetch("repo"))
+
+        expect(branding["machine_index"]).to eq("true")
+        expect(branding["pubid_flavor"]).not_to be_empty
+      end
+    end
+
+    # The safety net: a repo added to cimas.yml before its row lands must build
+    # its human site rather than raise on the missing flavor.
+    it "turns the machine index off for a repo configs.yml omits" do
+      branding = config.branding("relaton/relaton-data-sdo")
+
+      expect(branding["machine_index"]).to eq("false")
+      expect(branding["pubid_flavor"]).to eq("")
+    end
+
+    it "publishes the corpus for no repo" do
+      # --publish-data copies the whole corpus onto the site, against the 1 GB
+      # Pages cap. Every repo here commits its own data/, so none asks for it.
+      config.repos.each do |entry|
+        expect(config.branding(entry.fetch("repo"))["publish_data"]).to eq("false")
+      end
+    end
+
+    it "names no index, because the flavor already does" do
+      # `relaton index` derives the published index's name from the flavor's
+      # own INDEXFILE, so support resolves no name and passes --index-name
+      # never. A key here would be the `source:` drift all over again.
+      expect(config.branding("relaton/relaton-data-iso")).not_to have_key("index_name")
+      expect(config.repos.select { |e| e.key?("index_name") }).to be_empty
+    end
+
+    describe "a row that sets the optional key" do
+      # No live row sets publish_data, so the path is proved on a fixture.
+      # Without this it could be read wrongly, or not at all, and every live
+      # row would still pass.
+      let(:config) { DataIndexConfig.load(fixture) }
+      let(:fixture) do
+        file = Tempfile.new(["configs", ".yml"])
+        file.write(<<~YAML)
+          ---
+          defaults:
+            favicon: 'https://www.relaton.org/favicon.ico'
+            baseurl_template: 'https://raw.githubusercontent.com/relaton/relaton-data-%<repo>s/%<branch>s/'
+            description_template: 'Welcome to the %<display>s standards index site!'
+          repos:
+            - repo: fixture
+              display: Fixture
+              branch: main
+              pubid_flavor: iso
+              publish_data: true
+        YAML
+        file.close
+        file.path
+      end
+
+      after { FileUtils.rm_f(fixture) }
+
+      it "asks for no machine index when a row lost its flavor" do
+        # A row with no flavor must not ask for a machine index and then hand
+        # the build `--pubid-flavor ""`, which raises. The configs.yml data
+        # spec catches such a row at PR time; this keeps a deploy building.
+        rowless = DataIndexConfig.new(config.defaults,
+                                      [{ "repo" => "gap", "display" => "Gap",
+                                         "branch" => "main" }])
+
+        expect(rowless.branding("relaton/relaton-data-gap"))
+          .to include("title" => "Gap Index", "pubid_flavor" => "",
+                      "machine_index" => "false")
+      end
+
+      it "forwards publish_data" do
+        branding = config.branding("relaton/relaton-data-fixture")
+
+        expect(branding["publish_data"]).to eq("true")
+        expect(branding["machine_index"]).to eq("true")
       end
     end
   end
@@ -165,7 +264,9 @@ RSpec.describe "DataIndexConfig branding" do
 
       expect($CHILD_STATUS).to be_success
       expect(parse.call(out))
-        .to eq("title" => "SDO Index", "favicon" => "", "description" => "")
+        .to eq("title" => "SDO Index", "favicon" => "", "description" => "",
+               "pubid_flavor" => "", "machine_index" => "false",
+               "publish_data" => "false")
     end
 
     it "applies the flags the workflow always passes, blanks included" do
