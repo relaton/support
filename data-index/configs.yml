@@ -11,9 +11,10 @@
 #                          or `description` changes a published page on its next
 #                          deploy — no data-repo change involved.
 #   bin/check-data-pages - checks the Pages site returns 200, and that the repo
-#                          serves one of DataIndexConfig::INDEX_FILES under
-#                          `baseurl`. It probes those names newest-first; this
-#                          file does not say which one a repo publishes.
+#                          serves the index the site's own
+#                          index/manifest.json names, under `baseurl`. This
+#                          file does not say which one a repo publishes, and
+#                          does not guess.
 #
 # Branding lives here, and not in each caller's `with:` block, because
 # cimas.yml maps `.github/workflows/deploy.yml` as a whole-file copy for 31
@@ -21,14 +22,26 @@
 # loses its favicon and description.
 #
 # Per entry:
-#   repo        - relaton-data-<repo> (also the raw.githubusercontent path segment)
-#   display     - human name used in the title/description; the title is always
-#                 "<display> Index", so there is no per-entry `title` key
-#   branch      - the repo's real default branch (drives baseurl + Cimas target)
+#   repo         - relaton-data-<repo> (also the raw.githubusercontent path segment)
+#   display      - human name used in the title/description; the title is always
+#                  "<display> Index", so there is no per-entry `title` key
+#   branch       - the repo's real default branch (drives baseurl + Cimas target)
+#   pubid_flavor - `relaton index --pubid-flavor`: the flavor whose pubid
+#                  Identifier parses this corpus's docids and whose INDEXFILE
+#                  names the published index. Mandatory since relaton#114 — the
+#                  build raises without it. It names the FLAVOR, not the repo,
+#                  so four rows differ from their slug: itu-r carries `itu`, and
+#                  rfcs / rfcsubseries / ids carry `ietf`.
 #
 # Optional per-entry overrides (fall back to defaults when absent):
-#   favicon     - override defaults.favicon
-#   description - override the templated "Welcome to the <display> ..." line
+#   favicon      - override defaults.favicon
+#   description  - override the templated "Welcome to the <display> ..." line
+#   publish_data - `--publish-data`: copy the corpus onto the Pages site, so a
+#                  client fetches documents from the same origin as the machine
+#                  index. Only for a repo whose data is not served from
+#                  raw.githubusercontent; every repo here commits its own data/,
+#                  and the copy counts against the 1 GB Pages cap, so no row sets
+#                  this either.
 #
 # Favicon convention: prefer the SDO's own icon where there is a stable URL for
 # one; leave `favicon` unset to inherit defaults.favicon (relaton.org). Adding
@@ -45,8 +58,11 @@
 # It also used to carry `source`, naming the index each repo published. That was
 # a hand-copied echo of a fact raw.githubusercontent.com already holds, and it
 # drifted in both directions: `iana` named an index its repo had not published
-# yet, `ietf` named one its repo had since deleted. bin/check-data-pages now
-# discovers the index, so there is nothing here to keep in step with a crawl.
+# yet, `ietf` named one its repo had since deleted. The name belongs to the
+# flavor: `relaton index` reads `Relaton::<Flavor>::INDEXFILE` and writes the
+# result into the site's index/manifest.json, which bin/check-data-pages reads
+# back. So `pubid_flavor` is the only thing this file says about an index, and
+# there is nothing here to keep in step with a crawl.
 
 defaults:
   favicon: 'https://www.relaton.org/favicon.ico'
@@ -54,16 +70,16 @@ defaults:
   description_template: 'Welcome to the %<display>s standards index site!'
 
 repos:
-  - { repo: 3gpp,         display: 3GPP,          branch: v2 }
-  - { repo: adobe,        display: Adobe,         branch: main }
-  - { repo: bipm,         display: BIPM,          branch: v2 }
-  - { repo: calconnect,   display: CalConnect,    branch: v2 }
-  - { repo: ccsds,        display: CCSDS,         branch: v2 }
-  - { repo: cie,          display: CIE,           branch: v2 }
-  - { repo: easc,         display: EASC,          branch: main }
-  - { repo: ecma,         display: ECMA,          branch: v2 }
-  - { repo: etsi,         display: ETSI,          branch: v2 }
-  - { repo: gost,         display: GOST,          branch: main }
+  - { repo: 3gpp,         display: 3GPP,          branch: v2,    pubid_flavor: 3gpp }
+  - { repo: adobe,        display: Adobe,         branch: main,  pubid_flavor: adobe }
+  - { repo: bipm,         display: BIPM,          branch: v2,    pubid_flavor: bipm }
+  - { repo: calconnect,   display: CalConnect,    branch: v2,    pubid_flavor: calconnect }
+  - { repo: ccsds,        display: CCSDS,         branch: v2,    pubid_flavor: ccsds }
+  - { repo: cie,          display: CIE,           branch: v2,    pubid_flavor: cie }
+  - { repo: easc,         display: EASC,          branch: main,  pubid_flavor: easc }
+  - { repo: ecma,         display: ECMA,          branch: v2,    pubid_flavor: ecma }
+  - { repo: etsi,         display: ETSI,          branch: v2,    pubid_flavor: etsi }
+  - { repo: gost,         display: GOST,          branch: main,  pubid_flavor: gost }
   # Branding: taken from the `with:` block of the relaton-data-iana caller, and
   # recorded here rather than there because a `cimas sync` would drop that block
   # without trace. First flavor to follow the SDO's-own-icon convention beyond
@@ -71,16 +87,17 @@ repos:
   - repo: iana
     display: IANA
     branch: v2
+    pubid_flavor: iana
     favicon: 'https://www.iana.org/favicon.ico'
     description: >-
       Protocol parameter registries represent the authoritative record of many of
       the codes and numbers contained in a variety of Internet protocols.
-  - { repo: iala,         display: IALA,          branch: main }
-  - { repo: iec,          display: IEC,           branch: v2 }
-  - { repo: ieee,         display: IEEE,          branch: v2 }
-  - { repo: iho,          display: IHO,           branch: v2 }
-  - { repo: iso,          display: ISO,           branch: v2 }
-  - { repo: itu-r,        display: ITU-R,         branch: v2 }
+  - { repo: iala,         display: IALA,          branch: main,  pubid_flavor: iala }
+  - { repo: iec,          display: IEC,           branch: v2,    pubid_flavor: iec }
+  - { repo: ieee,         display: IEEE,          branch: v2,    pubid_flavor: ieee }
+  - { repo: iho,          display: IHO,           branch: v2,    pubid_flavor: iho }
+  - { repo: iso,          display: ISO,           branch: v2,    pubid_flavor: iso }
+  - { repo: itu-r,        display: ITU-R,         branch: v2,    pubid_flavor: itu }
   # The combined ITU-R + ITU-T corpus (one flat data/ folder, split by filename
   # prefix), which supersedes relaton-data-itu-r as a dataset. Both keep a row
   # for now: the relaton gem still consumes -itu-r, so retiring that site is a
@@ -90,6 +107,7 @@ repos:
   - repo: itu
     display: ITU
     branch: main
+    pubid_flavor: itu
     favicon: 'https://www.itu.int/favicon.ico'
     description: >-
       Combined bibliographic index of ITU-R and ITU-T publications in Relaton
@@ -112,19 +130,20 @@ repos:
   - repo: ietf
     display: IETF
     branch: main
+    pubid_flavor: ietf
     favicon: 'https://www.ietf.org/static/img/ietf-logo.dc9646b3c716.svg'
     description: >-
       Bibliographic data for IETF RFCs, Internet-Drafts and RFC sub-series in
       Relaton format
-  - { repo: jcgm,         display: JCGM,          branch: main }
-  - { repo: jis,          display: JIS,           branch: v2 }
-  - { repo: nist,         display: NIST,          branch: v2 }
-  - { repo: ogc,          display: OGC,           branch: v2 }
-  - { repo: oiml,         display: OIML,          branch: main }
-  - { repo: plateau,      display: PLATEAU,       branch: v2 }
-  - { repo: rfcs,         display: RFC,           branch: v2 }
-  - { repo: rfcsubseries, display: RFC Subseries, branch: v2 }
-  - { repo: xsf,          display: XSF,           branch: v2 }
+  - { repo: jcgm,         display: JCGM,          branch: main,  pubid_flavor: jcgm }
+  - { repo: jis,          display: JIS,           branch: v2,    pubid_flavor: jis }
+  - { repo: nist,         display: NIST,          branch: v2,    pubid_flavor: nist }
+  - { repo: ogc,          display: OGC,           branch: v2,    pubid_flavor: ogc }
+  - { repo: oiml,         display: OIML,          branch: main,  pubid_flavor: oiml }
+  - { repo: plateau,      display: PLATEAU,       branch: v2,    pubid_flavor: plateau }
+  - { repo: rfcs,         display: RFC,           branch: v2,    pubid_flavor: ietf }
+  - { repo: rfcsubseries, display: RFC Subseries, branch: v2,    pubid_flavor: ietf }
+  - { repo: xsf,          display: XSF,           branch: v2,    pubid_flavor: xsf }
 
   # Already-live repos (their sites returned 200 before this file existed).
   # Folded in so this file covers all 31; they carry per-repo favicon/
@@ -133,11 +152,13 @@ repos:
   - repo: ids
     display: Internet-Drafts
     branch: v2
+    pubid_flavor: ietf
     favicon: 'https://www.ietf.org/static/img/ietf-logo.dc9646b3c716.svg'
     description: 'Bibliographic data information for Internet-Drafts in Relaton format'
   - repo: oasis
     display: OASIS
     branch: v2
+    pubid_flavor: oasis
     favicon: 'https://www.oasis-open.org/wp-content/uploads/2020/11/cropped-2-layers@3x-32x32.png'
     description: >-
       Welcome to the OASIS standards index site! This is where you can find the
@@ -147,6 +168,7 @@ repos:
   - repo: w3c
     display: W3C
     branch: v2
+    pubid_flavor: w3c
     favicon: 'https://www.w3.org/assets/logos/w3c/w3c-no-bars.svg'
     description: >-
       Welcome to the World Wide Web Consortium standards index site! This is where

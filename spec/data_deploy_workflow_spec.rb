@@ -264,6 +264,60 @@ RSpec.describe ".github/workflows/data-deploy.yml" do
     end
   end
 
+  # `relaton index --pubid-flavor` is mandatory since relaton#114: the build
+  # raises without it unless --no-machine-index is passed. A build step that
+  # forgot it would fail every Pages build on that source mode, not degrade one.
+  describe "the machine-index flags" do
+    %w[PUBID_FLAVOR MACHINE_INDEX PUBLISH_DATA].each do |var|
+      it "hands #{var} to the shell through the environment, not `${{ }}`" do
+        output = var.downcase
+        index_steps.each do |step|
+          expect(step.fetch("env"))
+            .to include(var => "${{ steps.branding.outputs.#{output} }}")
+        end
+      end
+    end
+
+    it "passes --pubid-flavor from the resolved value in every build step" do
+      # Quoted and taken from env: a flavor is a bare token today, but the
+      # quoting is what keeps this step free of word splitting for good.
+      expect(index_steps.map { |s| s.fetch("run") })
+        .to all(include(%(--pubid-flavor "$PUBID_FLAVOR")))
+    end
+
+    it "builds the human site alone for a repo that asks for no machine index" do
+      # The fallback path: a repo added to cimas.yml before its configs.yml row
+      # lands resolves machine_index=false and must still build.
+      expect(index_steps.map { |s| s.fetch("run") }).to all(include("--no-machine-index"))
+    end
+
+    it "names no index, because the flavor already does" do
+      # `relaton index` derives the published index's name from the flavor's
+      # own INDEXFILE. Passing a name here would be a second source for a fact
+      # relaton owns — the `source:` drift that configs.yml already retired.
+      index_steps.each { |step| expect(step.to_s).not_to include("--index-name") }
+    end
+
+    it "publishes the corpus only for a repo that asks for it" do
+      # --publish-data copies the whole corpus onto the site, against the 1 GB
+      # Pages cap, so it must never ride on an unset value.
+      expect(index_steps.map { |s| s.fetch("run") })
+        .to all(match(/"\$PUBLISH_DATA" = "true"/))
+      expect(index_steps.map { |s| s.fetch("run") }).to all(include("--publish-data"))
+    end
+
+    it "resolves all four from relaton/support, never from a caller input" do
+      # A caller `with:` block cannot carry them: cimas.yml maps deploy.yml as a
+      # whole-file copy for 31 repos, so the next sync would wipe it.
+      %w[pubid-flavor machine-index publish-data].each do |input|
+        expect(inputs.keys).not_to include(input)
+        # Not the declaration alone: a build step reading `inputs.<x>` straight
+        # would bypass the resolver, and the configs.yml fallback with it.
+        index_steps.each { |step| expect(step.to_s).not_to include("inputs.#{input}") }
+      end
+    end
+  end
+
   it "publishes only from the repository's real default branch" do
     # Hardcoding master/main once excluded the relaton-data-* repos that moved
     # their default branch to v2 — fresh data built, never published.

@@ -53,6 +53,14 @@ name: Deploy
 # they could not be removed without breaking existing callers anyway). Blank —
 # what an omitted input arrives as — falls through to configs.yml.
 #
+# The machine-index flags travel the same path for the same reason, and have no
+# caller input at all: `--pubid-flavor` (mandatory since relaton/relaton#114),
+# `--machine-index` and `--publish-data` are resolved from configs.yml by the
+# same step. A repo with no row there resolves `machine_index=false` and builds
+# the human site, rather than failing. The flavor is the whole input — nothing
+# passes `--index-name`, because `relaton index` derives the published index's
+# name from that flavor's own `INDEXFILE`.
+#
 # The trade this makes: relaton/support becomes a runtime dependency of every
 # Pages build, not just the source of this file. A bad configs.yml breaks all 29
 # at once, which is why the resolve step runs before the expensive build and
@@ -360,30 +368,62 @@ jobs:
           TITLE: ${{ steps.branding.outputs.title }}
           FAVICON: ${{ steps.branding.outputs.favicon }}
           DESCRIPTION: ${{ steps.branding.outputs.description }}
+          PUBID_FLAVOR: ${{ steps.branding.outputs.pubid_flavor }}
+          MACHINE_INDEX: ${{ steps.branding.outputs.machine_index }}
+          PUBLISH_DATA: ${{ steps.branding.outputs.publish_data }}
         run: |
+          # --pubid-flavor is mandatory for a machine index (relaton#114). Only
+          # a repo with no configs.yml row resolves machine_index=false, and it
+          # builds the human site rather than failing. Written as `if` blocks,
+          # not `[ ] && ...`: under `bash -e` a false test in an && list is the
+          # step's exit status if nothing follows it.
+          ARGS=()
+          if [ "$MACHINE_INDEX" = "true" ]; then
+            ARGS+=(--pubid-flavor "$PUBID_FLAVOR")
+          else
+            ARGS+=(--no-machine-index)
+          fi
+          if [ "$PUBLISH_DATA" = "true" ]; then
+            ARGS+=(--publish-data)
+          fi
           relaton index "${{ inputs.data-dir }}" \
             --output _site \
             --title "$TITLE" \
             --favicon "$FAVICON" \
             --description "$DESCRIPTION" \
-            --base-url "https://raw.githubusercontent.com/${GITHUB_REPOSITORY}/${GITHUB_REF_NAME}"
+            --base-url "https://raw.githubusercontent.com/${GITHUB_REPOSITORY}/${GITHUB_REF_NAME}" \
+            "${ARGS[@]}"
 
       - name: Build index (git source)
         if: inputs.source == 'git'
         # BUNDLE_GEMFILE is exported to GITHUB_ENV in the build step above.
-        # TITLE/FAVICON/DESCRIPTION travel by env for the same reason as the gem
-        # step.
+        # Every branding and machine-index value travels by env for the same
+        # reason as the gem step.
         env:
           TITLE: ${{ steps.branding.outputs.title }}
           FAVICON: ${{ steps.branding.outputs.favicon }}
           DESCRIPTION: ${{ steps.branding.outputs.description }}
+          PUBID_FLAVOR: ${{ steps.branding.outputs.pubid_flavor }}
+          MACHINE_INDEX: ${{ steps.branding.outputs.machine_index }}
+          PUBLISH_DATA: ${{ steps.branding.outputs.publish_data }}
         run: |
+          # The same flag logic as the gem step above, and it must stay so.
+          ARGS=()
+          if [ "$MACHINE_INDEX" = "true" ]; then
+            ARGS+=(--pubid-flavor "$PUBID_FLAVOR")
+          else
+            ARGS+=(--no-machine-index)
+          fi
+          if [ "$PUBLISH_DATA" = "true" ]; then
+            ARGS+=(--publish-data)
+          fi
           bundle exec relaton index "${{ github.workspace }}/${{ inputs.data-dir }}" \
             --output "${{ github.workspace }}/_site" \
             --title "$TITLE" \
             --favicon "$FAVICON" \
             --description "$DESCRIPTION" \
-            --base-url "https://raw.githubusercontent.com/${GITHUB_REPOSITORY}/${GITHUB_REF_NAME}"
+            --base-url "https://raw.githubusercontent.com/${GITHUB_REPOSITORY}/${GITHUB_REF_NAME}" \
+            "${ARGS[@]}"
 
       # Both gated on the deploy job's own publish gate, so a run that cannot
       # publish does no Pages work: no API call to configure Pages, no artifact

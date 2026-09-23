@@ -60,90 +60,6 @@ RSpec.describe DataIndexConfig do
     end
   end
 
-  describe "#raw_index_urls" do
-    # configs.yml names no index file. Which one a repo publishes is a fact on
-    # raw.githubusercontent.com, so bin/check-data-pages probes the candidates
-    # newest-first and takes the first 200 rather than reading a hand-kept key.
-    it "offers every index name on the repo's real default branch (3gpp -> v2)" do
-      expect(config.raw_index_urls("3gpp")).to eq(
-        %w[
-          https://raw.githubusercontent.com/relaton/relaton-data-3gpp/v2/index-v3.yaml
-          https://raw.githubusercontent.com/relaton/relaton-data-3gpp/v2/index-v2.yaml
-          https://raw.githubusercontent.com/relaton/relaton-data-3gpp/v2/index-v1.yaml
-        ],
-      )
-    end
-
-    it "uses the repo's own default branch (iala -> main)" do
-      expect(config.raw_index_urls("iala"))
-        .to all(start_with("https://raw.githubusercontent.com/relaton/relaton-data-iala/main/"))
-    end
-
-    it "orders the candidates newest first" do
-      # The order is the whole safeguard, so pin it. A repo mid-migration can
-      # serve two names at once — relaton-data-bipm serves index-v1 and
-      # index-v2 today — and probing oldest-first would report the one it is
-      # retiring. The list is the same for every repo, so any one shows it.
-      expect(config.raw_index_urls("iho").map { |u| u.split("/").last })
-        .to eq(%w[index-v3.yaml index-v2.yaml index-v1.yaml])
-    end
-
-    it "raises for an unknown repo" do
-      expect { config.raw_index_urls("nope") }.to raise_error(ArgumentError, /unknown repo/)
-    end
-  end
-
-  describe "#first_live_index" do
-    # The choosing logic bin/check-data-pages runs, with the HTTP supplied by the
-    # caller so the suite stays offline. The executable passes its own
-    # http_status; here a hash stands in for the fleet's real responses.
-    def pick(statuses)
-      config.first_live_index("bipm") { |url| statuses.fetch(url.split("/").last) }
-    end
-
-    it "takes the newest index a repo serves, not the oldest" do
-      # What relaton-data-bipm looks like today: it publishes both.
-      status, url = pick("index-v3.yaml" => 404, "index-v2.yaml" => 200, "index-v1.yaml" => 200)
-
-      expect(status).to eq(200)
-      expect(url).to end_with("/index-v2.yaml")
-    end
-
-    it "stops at the first 200 rather than probing the rest" do
-      probed = []
-      status, = config.first_live_index("bipm") do |url|
-        probed << url.split("/").last
-        200
-      end
-
-      expect(status).to eq(200)
-      expect(probed).to eq(%w[index-v3.yaml])
-    end
-
-    it "finds an index no row could have named (ietf moved v1 -> v2)" do
-      status, url = pick("index-v3.yaml" => 404, "index-v2.yaml" => 200, "index-v1.yaml" => 404)
-
-      expect(status).to eq(200)
-      expect(url).to end_with("/index-v2.yaml")
-    end
-
-    it "reports the last candidate when a repo serves none" do
-      # Not an assertion that the repo should serve index-v1: it is simply the
-      # last status the probe saw, so the caller has one to print.
-      # bin/check-data-pages prints the full candidate list alongside it.
-      status, url = pick("index-v3.yaml" => 404, "index-v2.yaml" => 404, "index-v1.yaml" => 404)
-
-      expect(status).to eq(404)
-      expect(url).to end_with("/index-v1.yaml")
-    end
-
-    it "does not treat a non-200 such as a 403 as live" do
-      status, = pick("index-v3.yaml" => 403, "index-v2.yaml" => 403, "index-v1.yaml" => 403)
-
-      expect(status).to eq(403)
-    end
-  end
-
   describe "configs.yml data" do
     it "covers exactly the 31 repos with no duplicates" do
       repos = config.repos.map { |e| e["repo"] }
@@ -179,6 +95,39 @@ RSpec.describe DataIndexConfig do
 
       expect(carrying).to be_empty,
                           "these rows still carry a `source` key: #{carrying.join(', ')}"
+    end
+
+    # `relaton index --pubid-flavor` is mandatory (relaton#114): the generator
+    # raises without it unless --no-machine-index is passed. A row with no
+    # flavor fails that repo's Pages build, and only that repo's.
+    it "gives every row the pubid flavor the index build requires" do
+      missing = config.repos.reject { |e| e["pubid_flavor"].to_s.strip != "" }
+
+      expect(missing.map { |e| e["repo"] }).to be_empty,
+                                               "these rows carry no pubid_flavor"
+    end
+
+    # The flavor names the relaton/pubid namespace, not the repo. Four repos
+    # hold the corpus of a flavor spelt differently, so a slug-derived value
+    # would fail exactly those four and no others.
+    it "names the flavor, not the slug, for the four repos that differ" do
+      flavors = config.repos.to_h { |e| [e["repo"], e["pubid_flavor"]] }
+
+      expect(flavors.fetch("itu-r")).to eq("itu")
+      expect(flavors.fetch("rfcs")).to eq("ietf")
+      expect(flavors.fetch("rfcsubseries")).to eq("ietf")
+      expect(flavors.fetch("ids")).to eq("ietf")
+    end
+
+    it "keeps every other row's flavor equal to its slug" do
+      # A typo here is invisible until a deploy fails, and the slug is the
+      # right value for 27 of the 31 rows.
+      renamed = %w[itu-r rfcs rfcsubseries ids]
+      drifted = config.repos.reject do |e|
+        renamed.include?(e["repo"]) || e["pubid_flavor"] == e["repo"]
+      end
+
+      expect(drifted.map { |e| e["repo"] }).to be_empty
     end
   end
 end

@@ -22,26 +22,50 @@ keys that fed it were removed. Git history holds them if they are ever wanted.
 == Files
 
 `configs.yml`:: The verified per-repo table: `repo`, `display`, `branch` (its
-  real default branch — drives `baseurl`), plus optional `favicon` /
-  `description` overrides. Edit this to change any repo's config.
+  real default branch — drives `baseurl`), `pubid_flavor`, plus optional
+  `favicon` / `description` overrides. Edit this to change any repo's config.
++
+`pubid_flavor` is what `relaton index --pubid-flavor` takes: the flavor whose
+pubid `Identifier` parses the corpus's docids and whose `INDEXFILE` names the
+published index. It is mandatory — relaton/relaton#114 made the build raise
+without it — so a row that loses it fails that repo's Pages build, and only that
+repo's. The value names the *flavor*, not the repo, so four rows differ from
+their slug: `itu-r` carries `itu`, and `rfcs` / `rfcsubseries` / `ids` carry
+`ietf`. A repo that reaches the workflow with no row here resolves
+`machine_index=false` and builds the human site alone, rather than failing.
++
+The flavor is the whole input. `relaton index` derives the published index's
+name from that flavor's own `INDEXFILE`, so nothing here names an index and
+nothing passes `--index-name`.
++
+One optional key is read and set by no row today: `publish_data`
+(`--publish-data`) copies the corpus onto the Pages site, so a client fetches
+documents from the same origin as the machine index. It is for a repo whose data
+is not served from raw.githubusercontent, and it counts against the 1 GB Pages
+cap.
 +
 `display`, `favicon` and `description` are the branding the live `relaton index`
 build renders, so an edit to them changes a repo's published page on its next
 deploy — no data-repo change involved. `branch` builds the `baseurl` that
-`../bin/check-data-pages` probes for an index.
+`../bin/check-data-pages` checks the index under.
 +
 The table names no index file. It used to: a `source` key pinned the one each
 repo served, and it drifted in both directions — `iana` named an index its repo
-had not published yet, `ietf` named one its repo had since deleted.
-`DataIndexConfig::INDEX_FILES` now lists the candidates and the checker probes
-them newest-first, so nothing here has to be kept in step with a crawl.
-`../bin/index-branding`:: Resolves one repo's `title`/`favicon`/`description` from
-  `configs.yml` and prints them in `$GITHUB_OUTPUT` form. Run by the "Resolve
-  branding" step of `data-deploy.yml`; useful by hand to preview what a repo will
-  publish (`bin/index-branding relaton/relaton-data-iana`).
+had not published yet, `ietf` named one its repo had since deleted. The flavor
+owns that fact: `relaton index` resolves `Relaton::<Flavor>::INDEXFILE` and
+writes the result into the site's `index/manifest.json` as `index`, so
+`../bin/check-data-pages` reads the name back and checks that one URL. It keeps
+no candidate list, so nothing here has to be kept in step with a crawl.
+`../bin/index-branding`:: Resolves one repo's `title`/`favicon`/`description`
+  from `configs.yml`, plus the machine-index flags (`pubid_flavor`,
+  `machine_index`, `publish_data`), and prints them in `$GITHUB_OUTPUT` form. Run
+  by the "Resolve branding" step of `data-deploy.yml`; useful by hand to preview
+  what a repo will publish (`bin/index-branding relaton/relaton-data-iana`).
 `../bin/check-data-pages`:: Confirms each repo's Pages site returns 200, and that
-  the repo serves one of `INDEX_FILES` (the "confirm each site returns 200"
-  gate). Run it after the rollout lands.
+  the repo serves the index its manifest names (the "confirm each site returns
+  200" gate). A repo whose site has no manifest fails that check: its build
+  predates the machine index, which is the rollout state this command reports.
+  Run it after the rollout lands.
 
 == When the site rebuilds
 
