@@ -27,3 +27,72 @@ jobs:
           bundler-cache: true
 
       - run: bundle exec ruby check_data.rb
+
+      # Machine-index freshness (relaton#207): the shard client has no zip
+      # fallback, so a stale or malformed manifest is a silent retrieval
+      # outage for every consumer. The check is a no-op for repos that do
+      # not publish a machine index (manifest 404 = skip, per contract).
+      #
+      # The age tolerance (48 h) absorbs the push-vs-deploy ordering race on
+      # the default branch: the crawl commits data and the deploy workflow
+      # publishes the regenerated index; a manifest older than 48 h means
+      # the pipeline is broken, not that a deploy is in flight.
+      - name: machine-index freshness
+        if: github.repository != 'relaton/relaton-data-sdo'
+        run: |
+          ruby <<'RUBY'
+            require "date"
+            require "json"
+            require "net/http"
+            require "time"
+
+            repo = ENV.fetch("GITHUB_REPOSITORY")
+            base = "https://relaton.github.io/#{repo.split('/').last}"
+
+            def get(url)
+              uri = URI.parse(url)
+              http = Net::HTTP.new(uri.host, uri.port)
+              http.use_ssl = true
+              res = http.get(uri.request_uri)
+              res.code == "200" ? res.body : nil
+            rescue StandardError => e
+              abort "machine-index freshness: cannot fetch #{url}: #{e.class}: #{e.message}"
+            end
+
+            manifest_url = "#{base}/index/manifest.json"
+            body = get(manifest_url)
+            if body.nil?
+              puts "::notice::No machine index at #{manifest_url} — freshness check skipped (repo does not publish one)."
+              exit 0
+            end
+
+            manifest = JSON.parse(body)
+            %w[version key algorithm count shards generated].each do |field|
+              abort "machine-index freshness: manifest missing '#{field}'" unless manifest[field]
+            end
+            abort "manifest version must be 2, got #{manifest['version'].inspect}" unless manifest["version"] == 2
+            abort "manifest key must be 'root-number', got #{manifest['key'].inspect}" unless manifest["key"] == "root-number"
+            abort "manifest algorithm must be 'crc32', got #{manifest['algorithm'].inspect}" unless manifest["algorithm"] == "crc32"
+            abort "manifest count must be a positive integer, got #{manifest['count'].inspect}" unless manifest["count"].is_a?(Integer) && manifest["count"].positive?
+            abort "manifest shards must be a non-negative integer, got #{manifest['shards'].inspect}" unless manifest["shards"].is_a?(Integer) && manifest["shards"] >= 0
+
+            # Age: the generated date must be within 48 hours.
+            generated = Date.parse(manifest["generated"])
+            age_hours = ((Time.now - Time.parse(manifest["generated"])) / 3600).round(1)
+            abort "STALE machine index: generated #{manifest['generated']} is #{age_hours}h old (tolerance 48h)" if age_hours > 48
+
+            # Sample: fetch shard 0 and assert it parses as a row array.
+            # Shard 0 may legitimately 404 (empty buckets are not published).
+            if manifest["shards"].positive?
+              shard_body = get("#{base}/index/shard-00000.json")
+              if shard_body
+                shard = JSON.parse(shard_body)
+                abort "shard-00000 must be an array" unless shard.is_a?(Array)
+                puts "shard-00000: #{shard.size} rows"
+              else
+                puts "shard-00000: not published (empty bucket, per contract)"
+              end
+            end
+
+            puts "machine index fresh: version 2, #{manifest['count']} rows, #{manifest['shards']} shards, generated #{manifest['generated']} (#{age_hours}h ago)"
+          RUBY
