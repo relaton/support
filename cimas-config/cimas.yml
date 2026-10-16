@@ -533,6 +533,14 @@ repositories:
       .github/workflows/crawler.yml: gh-actions/data/crawler.yml
       .github/workflows/deploy.yml: gh-actions/data/deploy.yml
       .github/workflows/keep-alive.yml: gh-actions/master/keep-alive.yml
+  relaton-data-omg:
+    remote: ssh://git@github.com/relaton/relaton-data-omg
+    branch: main
+    files:
+      .github/workflows/check-index.yml: gh-actions/data/check-index.yml
+      .github/workflows/crawler.yml: gh-actions/data/crawler.yml
+      .github/workflows/deploy.yml: gh-actions/data/deploy.yml
+      .github/workflows/keep-alive.yml: gh-actions/master/keep-alive.yml
   relaton-data-oiml:
     remote: ssh://git@github.com/relaton/relaton-data-oiml
     branch: main
@@ -851,6 +859,7 @@ groups:
     - relaton-data-gost
     - relaton-data-jcgm
     - relaton-data-oiml
+    - relaton-data-omg
     - relaton-data-iala
     # Two data sources that predate the relaton-data-* naming, listed here so a
     # `-g data` wave reaches them. Both were unreachable by every group-scoped
