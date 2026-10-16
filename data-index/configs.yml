@@ -136,6 +136,7 @@ repos:
       Bibliographic data for IETF RFCs, Internet-Drafts and RFC sub-series in
       Relaton format
   - { repo: jcgm,         display: JCGM,          branch: main,  pubid_flavor: jcgm }
+  - { repo: omg,          display: OMG,           branch: main,  pubid_flavor: omg }
   - { repo: jis,          display: JIS,           branch: v2,    pubid_flavor: jis }
   - { repo: nist,         display: NIST,          branch: v2,    pubid_flavor: nist }
   - { repo: ogc,          display: OGC,           branch: v2,    pubid_flavor: ogc }
