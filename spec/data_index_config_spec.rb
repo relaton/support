@@ -63,8 +63,8 @@ RSpec.describe DataIndexConfig do
   describe "configs.yml data" do
     it "covers exactly the 31 repos with no duplicates" do
       repos = config.repos.map { |e| e["repo"] }
-      expect(repos.size).to eq(31)
-      expect(repos.uniq.size).to eq(31)
+      expect(repos.size).to eq(32) # 32nd: relaton-data-omg
+      expect(repos.uniq.size).to eq(32)
       expect(repos).to include("iso", "ieee", "jis", "adobe", "easc", "gost", "jcgm", "oiml", "iala")
       expect(repos).to include("ids", "oasis", "w3c") # already-live, folded in
       # Both ITU rows: `itu` is the combined ITU-R + ITU-T corpus, `itu-r` the
