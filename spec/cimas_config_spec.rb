@@ -19,7 +19,7 @@ RSpec.describe CimasConfig do
 
   describe ".load" do
     it "reads every repositories: entry of the shipped cimas.yml" do
-      expect(config.names.size).to eq(99)
+      expect(config.names.size).to eq(100) # 100th: relaton-data-omg
     end
 
     it "reads no duplicate name" do
