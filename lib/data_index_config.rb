@@ -1,4 +1,5 @@
 require "json"
+require "time"
 require "yaml"
 
 # Reads `data-index/configs.yml`, the single source of truth for the
@@ -148,6 +149,29 @@ class DataIndexConfig
 
     name
   rescue JSON::ParserError
+    nil
+  end
+
+  # The manifest's `generated` timestamp as a Time, or nil when the body is
+  # unusable or the field is missing. The field is an ISO 8601 date or
+  # timestamp; both parse. Kept pure so the freshness report is testable
+  # without the network.
+  def self.manifest_generated(body)
+    data = JSON.parse(body.to_s)
+    return nil unless data.is_a?(Hash)
+
+    value = data["generated"]
+    return nil unless value.is_a?(String) && !value.strip.empty?
+
+    value = value.strip
+    # A bare date is a calendar date of the deploy, not local midnight: build
+    # it in UTC so the age is the same wherever the report runs.
+    if (date = value.match(/\A(\d{4})-(\d{2})-(\d{2})\z/))
+      Time.utc(date[1].to_i, date[2].to_i, date[3].to_i)
+    else
+      Time.parse(value)
+    end
+  rescue JSON::ParserError, ArgumentError
     nil
   end
 

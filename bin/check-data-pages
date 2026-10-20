@@ -28,9 +28,16 @@
 #   bin/check-data-pages iso ieee            # check only these repos
 #   bin/check-data-pages --raw-only          # skip the Pages site, check raw-index
 #   bin/check-data-pages --site-only         # skip raw-index, check the Pages site
+#   bin/check-data-pages --freshness         # report each machine index's age
+#   bin/check-data-pages --freshness --max-age 72 --allow-missing
 #   bin/check-data-pages --base https://data.relaton.org  # custom Pages host
 #   bin/check-data-pages --list              # list known repos and exit
 #   bin/check-data-pages --config PATH ...   # use an alternate configs.yml
+#
+# --freshness is the fleet source-health report: one row per repo with the age
+# of its published machine index (the manifest's `generated` timestamp) and a
+# STALE marker past --max-age. A site with no usable manifest is a failure
+# unless --allow-missing, because an unmeasurable site is not a healthy one.
 
 require "optparse"
 require "net/http"
@@ -44,6 +51,9 @@ options = {
   list: false,
   site: true,
   raw: true,
+  freshness: false,
+  max_age: 48.0,
+  allow_missing: false,
   timeout: 15,
 }
 parser = OptionParser.new do |o|
@@ -51,6 +61,9 @@ parser = OptionParser.new do |o|
   o.on("--base HOST", "Pages host (default #{DataIndexConfig::PAGES_HOST})") { |v| options[:base] = v }
   o.on("--site-only", "Check only the Pages site URL") { options[:raw] = false }
   o.on("--raw-only", "Check only the raw-index URL") { options[:site] = false }
+  o.on("--freshness", "Report machine-index age; fail past --max-age") { options[:freshness] = true }
+  o.on("--max-age HOURS", Float, "Freshness tolerance in hours (default 48)") { |v| options[:max_age] = v }
+  o.on("--allow-missing", "With --freshness, tolerate a site with no manifest") { options[:allow_missing] = true }
   o.on("--timeout SECONDS", Integer, "Per-request timeout (default 15)") { |v| options[:timeout] = v }
   o.on("--config PATH", "Path to configs.yml") { |v| options[:config] = v }
   o.on("--list", "List known repos and exit") { options[:list] = true }
@@ -145,6 +158,38 @@ def resolve_raw_index(config, repo, base:, timeout:)
 
   url = config.raw_index_url(repo, name)
   [http_status(url, timeout: timeout), url]
+end
+
+if options[:freshness]
+  repo_w = ([4] + selected.map(&:length)).max
+  now = Time.now
+  stale = 0
+  missing = 0
+
+  puts format("%-#{repo_w}s  %8s  %s", "repo", "age(h)", "generated")
+  puts "-" * (repo_w + 24)
+  selected.each do |repo|
+    body, error = fetch_manifest(
+      config.manifest_url(repo, base: options[:base]), timeout: options[:timeout],
+    )
+    generated = DataIndexConfig.manifest_generated(body)
+    if generated.nil?
+      missing += 1
+      puts format("%-#{repo_w}s  %8s  %s", repo, "-", error || "NOGENERATED")
+      next
+    end
+
+    age = ((now - generated) / 3600).round(1)
+    marker = age > options[:max_age] ? "  STALE" : ""
+    puts format("%-#{repo_w}s  %8.1f  %s%s", repo, age, generated.utc.iso8601, marker)
+    stale += 1 if age > options[:max_age]
+  end
+
+  puts
+  puts "#{selected.size} repo(s): #{stale} stale (> #{options[:max_age]}h), " \
+       "#{missing} without a usable manifest"
+  exit 1 if stale.positive? || (missing.positive? && !options[:allow_missing])
+  exit 0
 end
 
 checks = []
