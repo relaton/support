@@ -1,0 +1,39 @@
+name: data health
+
+# The fleet source-health report (TODO.sota stream 2): the age of every
+# relaton-data-* machine index, observed daily rather than discovered when a
+# consumer's lookup goes stale. The report lands in the job summary; the job
+# fails when any published index is older than the tolerance (48 h by default,
+# matching the per-repo machine-index freshness check).
+on:
+  schedule:
+    - cron: '0 5 * * *'
+  workflow_dispatch:
+    inputs:
+      max_age:
+        description: Freshness tolerance in hours
+        required: false
+        default: '48'
+
+permissions:
+  contents: read
+
+jobs:
+  freshness:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Machine-index freshness
+        env:
+          MAX_AGE: ${{ github.event.inputs.max_age || '48' }}
+        run: |
+          set +e
+          ruby bin/check-data-pages --freshness --max-age "$MAX_AGE" | tee health.txt
+          status=${PIPESTATUS[0]}
+          {
+            echo "## Machine-index freshness"
+            echo '```'
+            cat health.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          exit "$status"

@@ -42,6 +42,30 @@ RSpec.describe "DataIndexConfig Pages URLs" do
     end
   end
 
+  describe ".manifest_generated" do
+    it "reads the manifest's date" do
+      body = %({"version":2,"index":"index-v2","generated":"2026-01-01"})
+
+      expect(DataIndexConfig.manifest_generated(body).utc).to eq(Time.utc(2026, 1, 1))
+    end
+
+    it "reads a full timestamp" do
+      body = %({"generated":"2026-01-01T12:30:00Z"})
+
+      expect(DataIndexConfig.manifest_generated(body).utc)
+        .to eq(Time.utc(2026, 1, 1, 12, 30))
+    end
+
+    it "returns nil for a body without a usable generated field" do
+      expect(DataIndexConfig.manifest_generated(%({"version":2}))).to be_nil
+      expect(DataIndexConfig.manifest_generated(%({"generated":42}))).to be_nil
+      expect(DataIndexConfig.manifest_generated(%({"generated":"  "}))).to be_nil
+      expect(DataIndexConfig.manifest_generated(%({"generated":"not a date"}))).to be_nil
+      expect(DataIndexConfig.manifest_generated("<html>404</html>")).to be_nil
+      expect(DataIndexConfig.manifest_generated(nil)).to be_nil
+    end
+  end
+
   describe ".index_from_manifest" do
     it "reads the monolith base name the site published" do
       body = %({"version":2,"index":"index-v2","count":10,"shards":8})
