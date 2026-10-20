@@ -84,6 +84,82 @@ jobs:
             exit 0
           fi
 
+          # Provenance and tombstones (TODO.sota stream 2). Both live in the
+          # repo root, outside data/, so `relaton index` never reads them.
+          # provenance.json records the revision the crawl read and when;
+          # tombstones.yaml marks documents that disappeared from the source,
+          # so a delisting is recorded instead of looking like a silent delete.
+          # The file list comes from git, not from the crawler: every data repo
+          # shares this workflow, whatever its fetch command.
+          CRAWLER_COMMAND="${{ inputs.fetch-command }}" ruby <<'RUBY'
+          require "date"
+          require "json"
+          require "time"
+          require "yaml"
+
+          now = Time.now.utc.iso8601
+          File.write("provenance.json", JSON.pretty_generate(
+            "repository" => ENV.fetch("GITHUB_REPOSITORY", ""),
+            "workflow" => ENV.fetch("GITHUB_WORKFLOW", ""),
+            "run_id" => ENV.fetch("GITHUB_RUN_ID", ""),
+            "run_attempt" => ENV.fetch("GITHUB_RUN_ATTEMPT", ""),
+            "source_revision" => ENV.fetch("GITHUB_SHA", ""),
+            "crawler" => ENV.fetch("CRAWLER_COMMAND", ""),
+            "crawled_at" => now,
+          ) + "\n")
+
+          deleted = IO.popen(
+            ["git", "diff", "--name-only", "--diff-filter=D", "HEAD", "--", "data/"],
+            &:read
+          ).lines.map(&:strip).reject(&:empty?)
+
+          existing = if File.exist?("tombstones.yaml")
+                       YAML.safe_load_file("tombstones.yaml", permitted_classes: [Date, Time]) || []
+                     else
+                       []
+                     end
+          existing = [] unless existing.is_a?(Array)
+          by_id = existing.each_with_object({}) do |entry, hash|
+            hash[entry["id"]] = entry if entry.is_a?(Hash) && entry["id"]
+          end
+
+          deleted.each do |path|
+            body = IO.popen(["git", "show", "HEAD:#{path}"], &:read)
+            doc = begin
+              YAML.safe_load(body, permitted_classes: [Date, Time])
+            rescue StandardError
+              nil
+            end
+            id = doc.is_a?(Hash) ? doc["id"] : nil
+            if id.nil? && doc.is_a?(Hash)
+              docids = Array(doc["docidentifier"])
+              primary = docids.find { |d| d.is_a?(Hash) && d["primary"] } || docids.first
+              id = primary["content"] if primary.is_a?(Hash)
+            end
+            id = File.basename(path, ".*") if id.nil? || id.to_s.strip.empty?
+            by_id[id.to_s] = {
+              "id" => id.to_s,
+              "file" => path,
+              "tombstoned_at" => now,
+              "run_id" => ENV.fetch("GITHUB_RUN_ID", ""),
+            }
+          end
+
+          # A document present again is not a tombstone. This matches on the
+          # recorded path: a document that came back under a new filename
+          # keeps its marker, which is the conservative direction.
+          by_id.delete_if { |_, entry| File.exist?(entry["file"].to_s) }
+
+          if by_id.any?
+            File.write("tombstones.yaml", by_id.values.sort_by { |e| e["id"] }.to_yaml)
+          elsif File.exist?("tombstones.yaml")
+            File.delete("tombstones.yaml")
+          end
+          RUBY
+
+          git add provenance.json
+          [ -f tombstones.yaml ] && git add tombstones.yaml
+
           [ -d data ] && echo data/* | xargs git add
           git add -u data/
           
