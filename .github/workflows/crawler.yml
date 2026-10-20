@@ -179,6 +179,48 @@ jobs:
 
           echo "skip_commit=false" >> $GITHUB_OUTPUT
 
+      # Per-release manifests (TODO.sota stream 6): for every index zip this
+      # crawl changed, write an immutable record beside it — content address,
+      # size, row count, crawl time and the revision read. The commit is the
+      # release, so the manifest and the artifact it describes stay together
+      # in history while the branch keeps rolling.
+      - name: Release manifests
+        run: |
+          changed=$(git diff --staged --name-only HEAD -- 'index*.zip' || true)
+          [ -z "$changed" ] && exit 0
+
+          for zip_name in $changed; do
+            yaml="${zip_name%.zip}.yaml"
+            [ -f "$zip_name" ] || continue
+            [ -f "$yaml" ] || continue
+
+            RELEASE_ZIP="$zip_name" RELEASE_YAML="$yaml" ruby <<'RUBY'
+          require "date"
+          require "digest"
+          require "json"
+          require "time"
+          require "yaml"
+
+          yaml = ENV.fetch("RELEASE_YAML")
+          zip = ENV.fetch("RELEASE_ZIP")
+          # The published index writes Symbol keys (`- :id: ...`).
+          rows = YAML.safe_load_file(yaml, permitted_classes: [Date, Time, Symbol])
+          File.write("#{File.basename(yaml, ".yaml")}.release.json", JSON.pretty_generate(
+            "version" => 1,
+            "index" => File.basename(yaml, ".yaml"),
+            "sha256" => Digest::SHA256.file(zip).hexdigest,
+            "bytes" => File.size(zip),
+            "count" => Array(rows).size,
+            "generated" => Time.now.utc.iso8601,
+            "source_revision" => ENV.fetch("GITHUB_SHA", ""),
+            "run_id" => ENV.fetch("GITHUB_RUN_ID", ""),
+            "repository" => ENV.fetch("GITHUB_REPOSITORY", ""),
+          ) + "\n")
+          RUBY
+
+            git add "${yaml%.yaml}.release.json"
+          done
+
       - if: github.event_name != 'pull_request' && steps.diff.outputs.skip_commit != 'true'
         name: Push data
         run: |
