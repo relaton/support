@@ -1,5 +1,13 @@
 name: crawler
 
+# Crawls of one dataset are exclusive: two runs racing the same repo push
+# from different bases and the second push dies non-fast-forward (seen live
+# when a manual canary raced the daily schedule). Queue instead of cancel —
+# a crawl that waited is still a valid incremental run.
+concurrency:
+  group: crawler-${{ github.repository }}
+  cancel-in-progress: false
+
 on:
   workflow_call:
     inputs:
