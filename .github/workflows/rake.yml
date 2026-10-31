@@ -24,5 +24,10 @@ jobs:
     with:
       tests-passed-event: ${{ inputs.tests-passed-event }}
       release-event: ${{ inputs.release-event }}
+      # A GITHUB_TOKEN cannot send repository_dispatch from a
+      # pull_request run ("Resource not accessible by integration"), so
+      # PR runs of every consumer without a pat_token secret failed at
+      # the cascade step. Dependents hear about main, not about PRs.
+      cascade: ${{ github.event_name != 'pull_request' }}
     secrets:
       pat_token: ${{ secrets.pat_token || github.token }}
