@@ -748,6 +748,25 @@ repositories:
       # unmapped 2026-09-03 (relaton/support#65): grammar only, so there is
       #   no build to sync. bin/cimas-orphan-audit finds no Cimas-written
       #   file in the repo.
+  # Discovered by the 2026-09 org scan (relaton/support#76).
+  relaton-db:
+    remote: ssh://git@github.com/relaton/relaton-db
+    branch: main
+    files:
+      .github/workflows/rake.yml: gh-actions/master/rake.yml
+      .github/workflows/release.yml: gh-actions/master/release.yml
+  w3c_api:
+    remote: ssh://git@github.com/relaton/w3c_api
+    branch: main
+    files:
+      .github/workflows/rake.yml: gh-actions/master/rake.yml
+      .github/workflows/release.yml: gh-actions/master/release.yml
+  relaton-asme:
+    remote: ssh://git@github.com/relaton/relaton-asme
+    branch: main
+    files:
+      .github/workflows/rake.yml: gh-actions/master/rake.yml
+      .github/workflows/release.yml: gh-actions/master/release.yml
 groups:
   sites:
     - relaton.org
@@ -788,6 +807,7 @@ groups:
     - relaton-render
     - relaton-xsf
     - relaton-plateau
+    - relaton-asme
   models:
     - relaton-models
     - relaton-model-w3c
@@ -823,6 +843,8 @@ groups:
     - relaton-release
     - relaton-server-csd
     - relaton-ui-designs
+    - relaton-db
+    - w3c_api
   infrastructure:
     - support
     - oss-guides
@@ -888,6 +910,10 @@ groups:
     - relaton-release
     - support
     - oss-guides
+    # discovered 2026-09 (relaton/support#76): self-managed CI
+    - claude-container
+    - relaton-api-js
+    - relaton-data-sdo
     # python
     - relaton-py
     - relaton-bib-py
