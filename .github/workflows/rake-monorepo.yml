@@ -28,6 +28,14 @@ on:
         required: false
         type: string
         default: 'root'
+      skip_gems:
+        description: >-
+          Comma-separated names of gem subdirectories under gem_directory to
+          exclude from the matrix. Use for compatibility-shell gems that carry
+          no Gemfile or Rakefile of their own.
+        required: false
+        type: string
+        default: ''
       skip-java-setup:
         description: 'Whether to skip Java setup (matches metanorma/ci generic-rake.yml)'
         required: false
@@ -111,6 +119,9 @@ jobs:
           else
             gems_array='[]'
           fi
+          gems_array="$(echo "$gems_array" | jq -c --arg skip '${{ inputs.skip_gems }}' '
+            (if $skip == "" then [] else ($skip | split(",") | map(gsub("^ +| +$"; ""))) end) as $skip_list
+            | map(select(. as $g | $skip_list | index($g) | not))')"
           allow='${{ inputs.ruby_versions }}'
           gemdir='${{ inputs.gem_directory }}'
           include_root='${{ inputs.include_root }}'
