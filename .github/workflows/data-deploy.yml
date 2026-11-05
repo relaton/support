@@ -343,13 +343,16 @@ jobs:
         run: |
           set -euo pipefail
           # Compile the Vue+Tailwind bundle into frontend/dist (gitignored).
-          ( cd .relaton-src/gems/relaton-cli/frontend && npm ci && npm run build )
-          # Resolve relaton + relaton-cli from the checkout and pubid from git
-          # main (same as the relaton repo's own root Gemfile).
+          # relaton-cli and relaton-render consolidated into the relaton gem
+          # (relaton#462): the frontend lives at lib/relaton/cli/frontend and
+          # the `relaton` executable ships with the path gem, so one checkout
+          # and one bundle entry cover both.
+          ( cd .relaton-src/lib/relaton/cli/frontend && npm ci && npm run build )
+          # Resolve relaton from the checkout and pubid from git main (same
+          # as the relaton repo's own root Gemfile).
           cat > "$RUNNER_TEMP/Gemfile.index" <<RUBY
           source "https://rubygems.org"
           gem "relaton", path: "${{ github.workspace }}/.relaton-src"
-          gem "relaton-cli", path: "${{ github.workspace }}/.relaton-src/gems/relaton-cli"
           gem "pubid", git: "https://github.com/metanorma/pubid.git", branch: "main"
           RUBY
           echo "BUNDLE_GEMFILE=$RUNNER_TEMP/Gemfile.index" >> "$GITHUB_ENV"
