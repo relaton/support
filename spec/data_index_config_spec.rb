@@ -63,10 +63,11 @@ RSpec.describe DataIndexConfig do
   describe "configs.yml data" do
     it "covers exactly the 31 repos with no duplicates" do
       repos = config.repos.map { |e| e["repo"] }
-      expect(repos.size).to eq(32) # 32nd: relaton-data-omg
-      expect(repos.uniq.size).to eq(32)
+      expect(repos.size).to eq(33) # 32nd: relaton-data-omg; 33rd: relaton-data-sae
+      expect(repos.uniq.size).to eq(33)
       expect(repos).to include("iso", "ieee", "jis", "adobe", "easc", "gost", "jcgm", "oiml", "iala")
       expect(repos).to include("ids", "oasis", "w3c") # already-live, folded in
+      expect(repos).to include("sae") # SAE Crossref deposits, crawled by the relaton SAE flavor
       # Both ITU rows: `itu` is the combined ITU-R + ITU-T corpus, `itu-r` the
       # ITU-R-only repo the relaton gem still consumes. Neither is a typo for
       # the other, and dropping either silently 404s a site.
