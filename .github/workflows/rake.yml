@@ -24,10 +24,45 @@ jobs:
     with:
       tests-passed-event: ${{ inputs.tests-passed-event }}
       release-event: ${{ inputs.release-event }}
-      # A GITHUB_TOKEN cannot send repository_dispatch from a
-      # pull_request run ("Resource not accessible by integration"), so
-      # PR runs of every consumer without a pat_token secret failed at
-      # the cascade step. Dependents hear about main, not about PRs.
-      cascade: ${{ github.event_name != 'pull_request' }}
+      # The cascade runs in the tests-passed job below, not in generic-rake.
+      # Since metanorma/ci decc7b1, generic-rake's tests-passed job has no
+      # job-level `contents: write`, so it inherits that file's
+      # `contents: read`. A caller without a pat_token then gave the dispatch
+      # a read-only GITHUB_TOKEN, and every push to main failed with
+      # "Resource not accessible by integration" (relaton/loc_marc). A caller
+      # cannot raise a grant that a called workflow lowers.
+      cascade: false
     secrets:
+      # generic-rake also uses pat_token for its checkout, so the fallback
+      # stays.
       pat_token: ${{ secrets.pat_token || github.token }}
+
+  # The same cascade generic-rake used to run, with the write grant this
+  # file can give. A repository_dispatch sent with the GITHUB_TOKEN does
+  # start workflow runs (it is one of the two documented exceptions), so
+  # `do-release` on a v* tag works for callers without a PAT too.
+  # Dependents hear about real runs, not about PRs: a pull_request
+  # GITHUB_TOKEN cannot send repository_dispatch.
+  tests-passed:
+    needs: rake
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: peter-evans/repository-dispatch@v3
+        name: Tests passed
+        with:
+          token: ${{ secrets.pat_token || github.token }}
+          repository: ${{ github.repository }}
+          event-type: ${{ inputs.tests-passed-event }}
+          client-payload: '{"ref": "${{ github.ref }}", "sha": "${{ github.sha }}", "type": "${{ inputs.tests-passed-event }}"}'
+
+      - if: startsWith(github.ref, 'refs/tags/v')
+        name: Repository ready for release
+        uses: peter-evans/repository-dispatch@v3
+        with:
+          token: ${{ secrets.pat_token || github.token }}
+          repository: ${{ github.repository }}
+          event-type: ${{ inputs.release-event }}
+          client-payload: '{"ref": "${{ github.ref }}", "sha": "${{ github.sha }}", "type": "${{ inputs.release-event }}"}'

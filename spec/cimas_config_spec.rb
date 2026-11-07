@@ -49,10 +49,19 @@ RSpec.describe CimasConfig do
 
   describe "#slug" do
     it "derives the GitHub slug from the remote, not the key" do
-      # Two cimas.yml keys do not match their repo name. An audit that built
+      # A cimas.yml key need not match its repo name (loc_marc and loc_mods
+      # pointed at loc-marc and loc-mods until 2026-11). An audit that built
       # the URL from the key would query a repo that does not exist.
-      expect(config.slug("loc_mods")).to eq("relaton/loc-mods")
-      expect(config.slug("loc_marc")).to eq("relaton/loc-marc")
+      renamed = described_class.new(
+        { "loc_marc" => { "remote" => "ssh://git@github.com/relaton/loc-marc" } },
+        {}, nil
+      )
+      expect(renamed.slug("loc_marc")).to eq("relaton/loc-marc")
+    end
+
+    it "derives the renamed loc slugs from the shipped cimas.yml" do
+      expect(config.slug("loc_mods")).to eq("relaton/loc_mods")
+      expect(config.slug("loc_marc")).to eq("relaton/loc_marc")
     end
 
     it "derives the slug for an ordinary entry" do
