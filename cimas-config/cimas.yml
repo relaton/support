@@ -557,6 +557,15 @@ repositories:
       .github/workflows/crawler.yml: gh-actions/data/crawler.yml
       .github/workflows/deploy.yml: gh-actions/data/deploy.yml
       .github/workflows/keep-alive.yml: gh-actions/master/keep-alive.yml
+  relaton-data-sae:
+    remote: ssh://git@github.com/relaton/relaton-data-sae
+    branch: main
+    files:
+      .github/workflows/check-index.yml: gh-actions/data/check-index.yml
+      .github/workflows/check_data.yml: gh-actions/data/check_data.yml
+      .github/workflows/crawler.yml: gh-actions/data/crawler.yml
+      .github/workflows/deploy.yml: gh-actions/data/deploy.yml
+      .github/workflows/keep-alive.yml: gh-actions/master/keep-alive.yml
   # models
   #
   # A model repo builds PNG views from LutaML sources, so `Gemfile`, `Makefile`
@@ -861,6 +870,7 @@ groups:
     - relaton-data-oiml
     - relaton-data-omg
     - relaton-data-iala
+    - relaton-data-sae
     # Two data sources that predate the relaton-data-* naming, listed here so a
     # `-g data` wave reaches them. Both were unreachable by every group-scoped
     # wave until 2026-09-04 — rawdata-bipm-metrologia because no group named it,
