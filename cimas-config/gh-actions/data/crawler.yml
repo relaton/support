@@ -19,7 +19,10 @@ name: Crawler
 # and pushes the crawled corpus to whatever branch it runs on.
 on:
   schedule:
-  - cron: '0 14 * * *'
+  # Off-minute: GitHub load-sheds whole-minute-0 crons by hours (relaton
+  # contract.yml#173, relaton corpus.yml#566) — the crawls were firing
+  # well past 14:00 UTC fleet-wide.
+  - cron: '37 14 * * *'
   workflow_dispatch:
     inputs:
       args:
