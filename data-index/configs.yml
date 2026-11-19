@@ -144,6 +144,7 @@ repos:
   - { repo: plateau,      display: PLATEAU,       branch: v2,    pubid_flavor: plateau }
   - { repo: rfcs,         display: RFC,           branch: v2,    pubid_flavor: ietf }
   - { repo: rfcsubseries, display: RFC Subseries, branch: v2,    pubid_flavor: ietf }
+  - { repo: sae,          display: SAE,           branch: main,  pubid_flavor: sae }
   - { repo: xsf,          display: XSF,           branch: v2,    pubid_flavor: xsf }
 
   # Already-live repos (their sites returned 200 before this file existed).

@@ -243,13 +243,13 @@ repositories:
       .github/workflows/release.yml: gh-actions/master/release.yml
   # loc
   loc_marc:
-    remote: ssh://git@github.com/relaton/loc-marc
+    remote: ssh://git@github.com/relaton/loc_marc
     branch: main
     files:
       .github/workflows/rake.yml: gh-actions/master/rake.yml
       .github/workflows/release.yml: gh-actions/master/release.yml
   loc_mods:
-    remote: ssh://git@github.com/relaton/loc-mods
+    remote: ssh://git@github.com/relaton/loc_mods
     branch: main
     files:
       .github/workflows/rake.yml: gh-actions/master/rake.yml
@@ -554,6 +554,15 @@ repositories:
     branch: main
     files:
       .github/workflows/check-index.yml: gh-actions/data/check-index.yml
+      .github/workflows/crawler.yml: gh-actions/data/crawler.yml
+      .github/workflows/deploy.yml: gh-actions/data/deploy.yml
+      .github/workflows/keep-alive.yml: gh-actions/master/keep-alive.yml
+  relaton-data-sae:
+    remote: ssh://git@github.com/relaton/relaton-data-sae
+    branch: main
+    files:
+      .github/workflows/check-index.yml: gh-actions/data/check-index.yml
+      .github/workflows/check_data.yml: gh-actions/data/check_data.yml
       .github/workflows/crawler.yml: gh-actions/data/crawler.yml
       .github/workflows/deploy.yml: gh-actions/data/deploy.yml
       .github/workflows/keep-alive.yml: gh-actions/master/keep-alive.yml
@@ -883,6 +892,7 @@ groups:
     - relaton-data-oiml
     - relaton-data-omg
     - relaton-data-iala
+    - relaton-data-sae
     # Two data sources that predate the relaton-data-* naming, listed here so a
     # `-g data` wave reaches them. Both were unreachable by every group-scoped
     # wave until 2026-09-04 — rawdata-bipm-metrologia because no group named it,

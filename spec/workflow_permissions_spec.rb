@@ -84,8 +84,9 @@ RSpec.describe "workflow token grants" do
     # the rest, so every synced template has its exact grant written down
     # somewhere.
     expected = {
-      # rake.yml: pre-existing, and load-bearing — generic-rake.yml's
-      # `tests-passed` job fires a repository-dispatch, which needs contents.
+      # rake.yml: pre-existing, and load-bearing — the `tests-passed` job in
+      # .github/workflows/rake.yml fires a repository-dispatch, which needs
+      # contents: write, and a caller's grant is the ceiling for that job.
       "gh-actions/master/rake.yml" => { "contents" => "write" },
       # release.yml: narrowing this fails the publish step *after* the version
       # bump has been committed and tagged. See the note in the template about
