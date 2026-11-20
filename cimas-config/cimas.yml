@@ -566,6 +566,18 @@ repositories:
       .github/workflows/crawler.yml: gh-actions/data/crawler.yml
       .github/workflows/deploy.yml: gh-actions/data/deploy.yml
       .github/workflows/keep-alive.yml: gh-actions/master/keep-alive.yml
+  # A partial entry. deploy.yml and check-index.yml are in the repo already (hand
+  # copies); Cimas maps them, with the data-index/configs.yml `eu` row they need,
+  # after relaton/relaton#589 puts the eu flavor on relaton main: data-deploy.yml
+  # runs `relaton index --pubid-flavor eu` from relaton@main.
+  # crawler.yml is the EU-only template, which adds a `full` checkbox.
+  relaton-data-eu:
+    remote: ssh://git@github.com/relaton/relaton-data-eu
+    branch: main
+    files:
+      .github/workflows/check_data.yml: gh-actions/data/check_data.yml
+      .github/workflows/crawler.yml: gh-actions/data-eu/crawler.yml
+      .github/workflows/keep-alive.yml: gh-actions/master/keep-alive.yml
   # models
   #
   # A model repo builds PNG views from LutaML sources, so `Gemfile`, `Makefile`
@@ -893,6 +905,7 @@ groups:
     - relaton-data-omg
     - relaton-data-iala
     - relaton-data-sae
+    - relaton-data-eu
     # Two data sources that predate the relaton-data-* naming, listed here so a
     # `-g data` wave reaches them. Both were unreachable by every group-scoped
     # wave until 2026-09-04 — rawdata-bipm-metrologia because no group named it,
