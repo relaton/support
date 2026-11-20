@@ -95,6 +95,9 @@ RSpec.describe "workflow token grants" do
         "id-token" => "write", "contents" => "write", "packages" => "write"
       },
       "gh-actions/data/check_data.yml" => { "contents" => "read" },
+      # The EU crawler caller: the shared crawler.yml plus a `full` checkbox. It
+      # pushes what it crawled, as the shared one does.
+      "gh-actions/data-eu/crawler.yml" => { "contents" => "write" },
       "gh-actions/model/make.yml" => { "contents" => "read" },
       # check-index.yml: the interesting one. It calls the SAME reusable workflow
       # as deploy.yml, yet grants strictly less — because the `pages: write` job
