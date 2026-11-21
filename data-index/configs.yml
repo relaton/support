@@ -79,6 +79,15 @@ repos:
   - { repo: easc,         display: EASC,          branch: main,  pubid_flavor: easc }
   - { repo: ecma,         display: ECMA,          branch: v2,    pubid_flavor: ecma }
   - { repo: etsi,         display: ETSI,          branch: v2,    pubid_flavor: etsi }
+  # The default description says "standards"; the EU corpus is legal acts
+  # (CELEX sector 3: regulations, directives and decisions) from CELLAR.
+  - repo: eu
+    display: EU
+    branch: main
+    pubid_flavor: eu
+    description: >-
+      Bibliographic data for EU regulations, directives and decisions in
+      Relaton format
   - { repo: gost,         display: GOST,          branch: main,  pubid_flavor: gost }
   # Branding: taken from the `with:` block of the relaton-data-iana caller, and
   # recorded here rather than there because a `cimas sync` would drop that block
