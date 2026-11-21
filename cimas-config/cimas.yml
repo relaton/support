@@ -566,17 +566,17 @@ repositories:
       .github/workflows/crawler.yml: gh-actions/data/crawler.yml
       .github/workflows/deploy.yml: gh-actions/data/deploy.yml
       .github/workflows/keep-alive.yml: gh-actions/master/keep-alive.yml
-  # A partial entry. deploy.yml and check-index.yml are in the repo already (hand
-  # copies); Cimas maps them, with the data-index/configs.yml `eu` row they need,
-  # after relaton/relaton#589 puts the eu flavor on relaton main: data-deploy.yml
-  # runs `relaton index --pubid-flavor eu` from relaton@main.
   # crawler.yml is the EU-only template, which adds a `full` checkbox.
+  # deploy.yml and check-index.yml run `relaton index --pubid-flavor eu` from
+  # relaton@main (relaton/relaton#589) and read the data-index/configs.yml `eu` row.
   relaton-data-eu:
     remote: ssh://git@github.com/relaton/relaton-data-eu
     branch: main
     files:
+      .github/workflows/check-index.yml: gh-actions/data/check-index.yml
       .github/workflows/check_data.yml: gh-actions/data/check_data.yml
       .github/workflows/crawler.yml: gh-actions/data-eu/crawler.yml
+      .github/workflows/deploy.yml: gh-actions/data/deploy.yml
       .github/workflows/keep-alive.yml: gh-actions/master/keep-alive.yml
   # models
   #

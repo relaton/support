@@ -54,6 +54,11 @@ RSpec.describe DataIndexConfig do
         .to eq("Bibliographic data information for Internet-Drafts in Relaton format")
     end
 
+    it "describes the EU corpus as legal acts, not standards (eu)" do
+      expect(branding("eu")["description"])
+        .to eq("Bibliographic data for EU regulations, directives and decisions in Relaton format")
+    end
+
     it "templates the description for repos without an override (iso)" do
       expect(branding("iso")["description"])
         .to eq("Welcome to the ISO standards index site!")
@@ -61,13 +66,14 @@ RSpec.describe DataIndexConfig do
   end
 
   describe "configs.yml data" do
-    it "covers exactly the 31 repos with no duplicates" do
+    it "covers exactly the expected repos with no duplicates" do
       repos = config.repos.map { |e| e["repo"] }
-      expect(repos.size).to eq(33) # 32nd: relaton-data-omg; 33rd: relaton-data-sae
-      expect(repos.uniq.size).to eq(33)
+      expect(repos.size).to eq(34) # 32nd: relaton-data-omg; 33rd: relaton-data-sae; 34th: relaton-data-eu
+      expect(repos.uniq.size).to eq(34)
       expect(repos).to include("iso", "ieee", "jis", "adobe", "easc", "gost", "jcgm", "oiml", "iala")
       expect(repos).to include("ids", "oasis", "w3c") # already-live, folded in
       expect(repos).to include("sae") # SAE Crossref deposits, crawled by the relaton SAE flavor
+      expect(repos).to include("eu") # EU legal acts from CELLAR, crawled by the relaton EU flavor
       # Both ITU rows: `itu` is the combined ITU-R + ITU-T corpus, `itu-r` the
       # ITU-R-only repo the relaton gem still consumes. Neither is a typo for
       # the other, and dropping either silently 404s a site.
