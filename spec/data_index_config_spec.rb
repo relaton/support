@@ -68,8 +68,8 @@ RSpec.describe DataIndexConfig do
   describe "configs.yml data" do
     it "covers exactly the expected repos with no duplicates" do
       repos = config.repos.map { |e| e["repo"] }
-      expect(repos.size).to eq(34) # 32nd: relaton-data-omg; 33rd: relaton-data-sae; 34th: relaton-data-eu
-      expect(repos.uniq.size).to eq(34)
+      expect(repos.size).to eq(35) # 32nd: relaton-data-omg; 33rd: relaton-data-sae; 34th: relaton-data-eu; 35th: relaton-data-wmo
+      expect(repos.uniq.size).to eq(35)
       expect(repos).to include("iso", "ieee", "jis", "adobe", "easc", "gost", "jcgm", "oiml", "iala")
       expect(repos).to include("ids", "oasis", "w3c") # already-live, folded in
       expect(repos).to include("sae") # SAE Crossref deposits, crawled by the relaton SAE flavor

@@ -461,6 +461,14 @@ repositories:
       .github/workflows/crawler.yml: gh-actions/data/crawler.yml
       .github/workflows/deploy.yml: gh-actions/data/deploy.yml
       .github/workflows/keep-alive.yml: gh-actions/master/keep-alive.yml
+  relaton-data-wmo:
+    remote: ssh://git@github.com/relaton/relaton-data-wmo
+    branch: main
+    files:
+      .github/workflows/check-index.yml: gh-actions/data/check-index.yml
+      .github/workflows/crawler.yml: gh-actions/data/crawler.yml
+      .github/workflows/deploy.yml: gh-actions/data/deploy.yml
+      .github/workflows/keep-alive.yml: gh-actions/master/keep-alive.yml
   relaton-data-xsf:
     remote: ssh://git@github.com/relaton/relaton-data-xsf
     branch: v2
@@ -895,6 +903,7 @@ groups:
     - relaton-data-ccsds
     - relaton-data-etsi
     - relaton-data-xsf
+    - relaton-data-wmo
     - relaton-data-plateau
     - relaton-data-jis
     - relaton-data-adobe
