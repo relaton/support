@@ -100,12 +100,15 @@ RSpec.describe "workflow token grants" do
       "gh-actions/data-eu/crawler.yml" => { "contents" => "write" },
       "gh-actions/model/make.yml" => { "contents" => "read" },
       # check-index.yml: the interesting one. It calls the SAME reusable workflow
-      # as deploy.yml, yet grants strictly less — because the `pages: write` job
-      # it could otherwise reach is `if:`-gated off for a pull_request ref, and a
-      # skipped job never has its request evaluated. Pinned in both directions:
-      # widening it hands every PR in the fleet the ability to publish, narrowing
-      # it breaks the pre-merge check. See the template for the full argument.
-      "gh-actions/data/check-index.yml" => { "contents" => "read" },
+      # as deploy.yml, so it needs the SAME grant, though its `deploy` job is
+      # `if:`-gated off for a pull_request ref. GitHub checks a caller's grant
+      # against every job of the called workflow, skipped ones included; with
+      # only `contents: read` every run was a `startup_failure` with 0 jobs. The
+      # `if:` gate, not this grant, is what keeps a PR from publishing. See the
+      # template for the full argument.
+      "gh-actions/data/check-index.yml" => {
+        "contents" => "read", "pages" => "write", "id-token" => "write"
+      },
     }.freeze
 
     expected.each do |src, grant|
