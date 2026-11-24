@@ -155,6 +155,7 @@ repos:
   - { repo: rfcsubseries, display: RFC Subseries, branch: v2,    pubid_flavor: ietf }
   - { repo: sae,          display: SAE,           branch: main,  pubid_flavor: sae }
   - { repo: xsf,          display: XSF,           branch: v2,    pubid_flavor: xsf }
+  - { repo: wmo,          display: WMO,           branch: main,  pubid_flavor: wmo }
 
   # Already-live repos (their sites returned 200 before this file existed).
   # Folded in so this file covers all 31; they carry per-repo favicon/
