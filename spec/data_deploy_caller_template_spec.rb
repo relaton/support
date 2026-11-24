@@ -195,6 +195,15 @@ RSpec.describe "cimas-config/gh-actions/data/*.yml (the Cimas caller templates)"
       expect(job.call.fetch("uses")).to eq(deploy_job.fetch("uses"))
     end
 
+    it "grants what Deploy grants, because it calls what Deploy calls" do
+      # GitHub checks the caller's grant against every job of the called
+      # workflow before the run starts, including the `deploy` job the `if:`
+      # gate skips on a pull_request. A narrower grant is a `startup_failure`
+      # with 0 jobs — no log, nothing to read but the run page — which is what
+      # every Check index run was while this granted only `contents: read`.
+      expect(job.call.fetch("permissions")).to eq(deploy_job.fetch("permissions"))
+    end
+
     it "passes no inputs and declares no guard of its own" do
       # Same doctrine as deploy.yml, and the reason there is no `validate-only`
       # input: an input has to arrive in a `with:` block, which no synced caller
