@@ -273,7 +273,8 @@ RSpec.describe "cimas-config/gh-actions/data/*.yml (the Cimas caller templates)"
     # of the called workflow asks for — not the narrowest set that describes what
     # the caller itself does. data-deploy.yml declares `contents: read` at
     # workflow level and adds `pages: write` + `id-token: write` on its `deploy`
-    # job, so all three belong here.
+    # job, so all three belong here. `issues: write` is the fourth, granted ahead
+    # of build_index_page asking for it (see the example below).
     #
     # Narrowing this to `contents: read` — the reflexive "minimal permissions"
     # edit — does not fail at parse time. It fails minutes into the build, at the
@@ -284,15 +285,26 @@ RSpec.describe "cimas-config/gh-actions/data/*.yml (the Cimas caller templates)"
     # Which is exactly why it is asserted here rather than left to review.
     deploy_job = deploy.fetch("jobs").fetch("deploy")
 
-    it "grants the union of what data-deploy.yml's jobs request" do
+    it "grants the union of what data-deploy.yml's jobs request, plus issues: write" do
       expect(deploy_job.fetch("permissions"))
-        .to eq("contents" => "read", "pages" => "write", "id-token" => "write")
+        .to eq("contents" => "read", "pages" => "write", "id-token" => "write", "issues" => "write")
+    end
+
+    it "grants issues: write before data-deploy.yml asks for it" do
+      # `relaton index` reports documents it cannot put in the machine index as
+      # an issue in the data repo (Relaton::Logger::Channels::GhIssue), so
+      # build_index_page will request `issues: write`. A caller without that
+      # scope then fails every run as `startup_failure`, 0 jobs. The callers go
+      # first: an extra grant here does nothing until the shared workflow asks.
+      # Only after `cimas sync` puts this file in every data repo may
+      # data-deploy.yml request the scope.
+      expect(deploy_job.fetch("permissions")).to include("issues" => "write")
     end
 
     it "keeps the two Pages scopes specifically" do
       # Stated separately from the exact-match example above because dropping
       # either one is the actual failure mode, and a future edit that legitimately
-      # adds a fourth scope should still not be able to remove these two.
+      # adds another scope should still not be able to remove these two.
       expect(deploy_job.fetch("permissions")).to include("pages" => "write", "id-token" => "write")
     end
 

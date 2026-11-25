@@ -61,10 +61,17 @@ jobs:
     # a read-only token whatever this says, and a same-repo PR runs its own copy
     # of this file, so its author could change the grant anyway.
     #
+    # `issues: write` follows deploy.yml: build_index_page will ask for it, so
+    # `relaton index` can report unindexable documents as an issue. On a pull
+    # request that report runs too. A fork PR's token is read-only, so it cannot
+    # open the issue, and `relaton index` raises when GitHub refuses the issue
+    # (relaton branch fix/index-unindexed-gh-issue). That fork build fails red.
+    #
     # Do not narrow this. Pinned by spec/workflow_permissions_spec.rb and
     # spec/data_deploy_caller_template_spec.rb.
     permissions:
       contents: read   # the checkouts in build_index_page
       pages: write     # requested by data-deploy.yml's deploy job (skipped here)
       id-token: write  # likewise
+      issues: write    # relaton index reports unindexable documents as an issue
     uses: relaton/support/.github/workflows/data-deploy.yml@main
