@@ -180,6 +180,19 @@ RSpec.describe "cimas.yml un-mapping markers" do
                    "#{bad.map { |m| "#{m[:repo]} line #{m[:line]}" }.join(', ')}"
   end
 
+  it "leaves relaton-data-ieee's crawler.yml to that repo, with a marker" do
+    # That caller passes the IEEE_RAWBIB_TOKEN PAT (`secrets: args:`) so the
+    # shared workflow can clone the private ietf-tools/ieee-rawbib. The shared
+    # template passes no secret, so a sync of it would drop the token.
+    files = CimasConfig.load.files("relaton-data-ieee")
+    expect(files).not_to have_key(".github/workflows/crawler.yml")
+    expect(files.keys).to include(".github/workflows/check-index.yml",
+                                  ".github/workflows/deploy.yml",
+                                  ".github/workflows/keep-alive.yml")
+    ieee = markers.select { |m| m[:repo] == "relaton-data-ieee" }
+    expect(ieee.map { |m| [m[:kind], m[:marked]] }).to eq([[:comment, true]])
+  end
+
   it "gives every repo entry a remote of its own" do
     # Not a marker rule, but the same failure: a shared remote makes Cimas
     # clone one repo into another's working directory and judge its tree
