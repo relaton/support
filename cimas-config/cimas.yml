@@ -405,7 +405,13 @@ repositories:
     branch: v2
     files:
       .github/workflows/check-index.yml: gh-actions/data/check-index.yml
-      .github/workflows/crawler.yml: gh-actions/data/crawler.yml
+      # unmapped 2026-11-26 (relaton/relaton-data-ieee#9): crawler.yml is
+      #   hand-owned there. It passes the IEEE_RAWBIB_TOKEN PAT to the shared
+      #   workflow (`secrets: args:`) to clone the private ietf-tools/ieee-rawbib;
+      #   the shared template passes no secret, so a sync would drop the token.
+      #   The destination file carries no Cimas header, so a cleanup wave
+      #   cannot delete it either.
+      # .github/workflows/crawler.yml: gh-actions/data/crawler.yml
       .github/workflows/deploy.yml: gh-actions/data/deploy.yml
       .github/workflows/keep-alive.yml: gh-actions/master/keep-alive.yml
   relaton-data-iec:
