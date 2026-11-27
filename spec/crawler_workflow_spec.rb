@@ -131,3 +131,20 @@ RSpec.describe "crawler workflow: provenance and tombstones" do
     end
   end
 end
+
+# relaton-core's DataFetcher#report_errors opens an "Error fetching documents"
+# issue through Relaton::Logger::Channels::GhIssue, which reads GITHUB_TOKEN
+# from the environment. Without it the crawl log ends with
+# `GITHUB_TOKEN is not set!`, and a parse failure reaches only the job log
+# (relaton-data-ieee run 45745628639).
+RSpec.describe "crawler workflow: fetch step token" do
+  it "gives the fetch command the job token as GITHUB_TOKEN" do
+    workflow = YAML.safe_load_file(
+      File.expand_path("../.github/workflows/crawler.yml", __dir__), aliases: true
+    )
+    steps = workflow.dig("jobs", "crawl", "steps")
+                    .select { |s| s["run"].to_s.include?("${{ inputs.fetch-command }} ${{ inputs.args }}") }
+    expect(steps.size).to eq(1)
+    expect(steps.first.fetch("env", {})).to include("GITHUB_TOKEN" => "${{ github.token }}")
+  end
+end
