@@ -89,9 +89,9 @@ jobs:
     # deliberately wider than `contents: read`. A called workflow cannot exceed
     # what the caller granted, so a caller needs the UNION of every scope every
     # job of the called workflow asks for — data-deploy.yml declares
-    # `contents: read` at workflow level and adds `pages: write` +
-    # `id-token: write` on its own `deploy` job. `issues: write`, below, is for
-    # a request build_index_page does not make yet.
+    # `contents: read` at workflow level, adds `pages: write` +
+    # `id-token: write` on its own `deploy` job, and adds `issues: write` on
+    # build_index_page.
     #
     # Narrowing this to `contents: read` — the reflexive "minimal permissions"
     # edit — does not fail at parse time. It fails minutes into the build, at the
@@ -99,12 +99,11 @@ jobs:
     #
     #   The workflow is requesting 'pages: write', but is only allowed 'pages: none'.
     #
-    # `issues: write` is granted AHEAD of the shared workflow. `relaton index`
-    # reports the documents it cannot put in the machine index as an issue in
-    # this repo, so build_index_page will ask for that scope — and a caller that
-    # lacks it then fails every run as `startup_failure`, 0 jobs, no log. Until
-    # data-deploy.yml asks, the extra grant does nothing. It must reach every
-    # data repo through `cimas sync` BEFORE data-deploy.yml asks for it.
+    # `issues: write` is for build_index_page: `relaton index` reports the
+    # documents it cannot put in the machine index as an issue in this repo. A
+    # caller that lacks it fails every run as `startup_failure`, 0 jobs, no log.
+    # A new scope in data-deploy.yml must reach every data repo through
+    # `cimas sync` BEFORE data-deploy.yml asks for it, as this one did.
     #
     # Pinned by spec/data_deploy_caller_template_spec.rb. Do not narrow it.
     permissions:

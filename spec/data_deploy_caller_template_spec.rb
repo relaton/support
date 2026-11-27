@@ -272,9 +272,8 @@ RSpec.describe "cimas-config/gh-actions/data/*.yml (the Cimas caller templates)"
     # the caller granted, so the caller needs the UNION of every scope every job
     # of the called workflow asks for — not the narrowest set that describes what
     # the caller itself does. data-deploy.yml declares `contents: read` at
-    # workflow level and adds `pages: write` + `id-token: write` on its `deploy`
-    # job, so all three belong here. `issues: write` is the fourth, granted ahead
-    # of build_index_page asking for it (see the example below).
+    # workflow level, adds `pages: write` + `id-token: write` on its `deploy`
+    # job and `issues: write` on build_index_page, so all four belong here.
     #
     # Narrowing this to `contents: read` — the reflexive "minimal permissions"
     # edit — does not fail at parse time. It fails minutes into the build, at the
@@ -285,19 +284,46 @@ RSpec.describe "cimas-config/gh-actions/data/*.yml (the Cimas caller templates)"
     # Which is exactly why it is asserted here rather than left to review.
     deploy_job = deploy.fetch("jobs").fetch("deploy")
 
-    it "grants the union of what data-deploy.yml's jobs request, plus issues: write" do
+    it "grants the union of what data-deploy.yml's jobs request" do
       expect(deploy_job.fetch("permissions"))
         .to eq("contents" => "read", "pages" => "write", "id-token" => "write", "issues" => "write")
     end
 
-    it "grants issues: write before data-deploy.yml asks for it" do
+    # The rule itself, checked against the shared workflow for BOTH callers, so
+    # a new scope in data-deploy.yml cannot land before the callers grant it.
+    # GitHub checks this union before the run starts, for skipped jobs too, and
+    # a missing scope fails every run in every data repo as `startup_failure`.
+    shared = YAML.safe_load_file(File.join(repo_root, ".github/workflows/data-deploy.yml"))
+    grants = [shared["permissions"], *shared.fetch("jobs").values.map { _1["permissions"] }].compact
+    rank = { "none" => 0, "read" => 1, "write" => 2 }
+
+    it "finds only scope maps in data-deploy.yml, which the check below reads" do
+      # `read-all` / `write-all` are strings, not maps. Teach the check below
+      # about them before data-deploy.yml uses one.
+      expect(grants).to all(be_a(Hash))
+    end
+
+    { "deploy.yml" => deploy_job,
+      "check-index.yml" => YAML.safe_load_file(check_index_path).fetch("jobs").values.fetch(0) }
+      .each do |caller, caller_job|
+        it "#{caller} grants every scope that a job of data-deploy.yml requests" do
+          granted = caller_job.fetch("permissions")
+          grants.grep(Hash).each do |grant|
+            grant.each do |scope, level|
+              expect(rank.fetch(granted.fetch(scope, "none"))).to be >= rank.fetch(level),
+                "#{caller} grants #{scope}: #{granted.fetch(scope, 'none')}, " \
+                "but data-deploy.yml requests #{scope}: #{level}"
+            end
+          end
+        end
+      end
+
+    it "keeps issues: write specifically" do
       # `relaton index` reports documents it cannot put in the machine index as
       # an issue in the data repo (Relaton::Logger::Channels::GhIssue), so
-      # build_index_page will request `issues: write`. A caller without that
-      # scope then fails every run as `startup_failure`, 0 jobs. The callers go
-      # first: an extra grant here does nothing until the shared workflow asks.
-      # Only after `cimas sync` puts this file in every data repo may
-      # data-deploy.yml request the scope.
+      # build_index_page requests `issues: write`. A caller without that scope
+      # fails every run as `startup_failure`, 0 jobs. The callers got it first
+      # (support#107 and a `cimas sync`), and data-deploy.yml asked after.
       expect(deploy_job.fetch("permissions")).to include("issues" => "write")
     end
 

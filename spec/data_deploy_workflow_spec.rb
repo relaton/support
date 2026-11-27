@@ -443,4 +443,31 @@ RSpec.describe ".github/workflows/data-deploy.yml" do
       expect(workflow.fetch("concurrency").fetch("group")).to include(deploy_gate)
     end
   end
+
+  describe "the token for the issue that relaton index opens" do
+    # `relaton index` reports the documents it cannot put in the machine index
+    # as an issue in the data repo, titled `Documents missing from the machine
+    # index` (Relaton::Logger::Channels::GhIssue, the channel the ISO crawler
+    # uses). IndexSiteGenerator#report_unindexed reads GITHUB_REPOSITORY, which
+    # the runner sets, and GITHUB_TOKEN, which a step must set. Without either
+    # one, or without the scope, it raises Relaton::IndexBuildError and the
+    # deploy stops, as it did for relaton-data-ieee.
+    it "grants build_index_page issues: write, and keeps contents: read" do
+      # A job-level block replaces the workflow-level one for this job, so
+      # contents: read must be stated again or the checkouts lose it.
+      expect(build_job.fetch("permissions")).to eq("contents" => "read", "issues" => "write")
+    end
+
+    it "hands GITHUB_TOKEN to both index steps" do
+      expect(index_steps.size).to eq(2)
+      index_steps.each do |step|
+        expect(step.fetch("env")).to include("GITHUB_TOKEN" => "${{ github.token }}")
+      end
+    end
+
+    it "leaves the deploy job grant alone" do
+      expect(workflow.fetch("jobs").fetch("deploy").fetch("permissions"))
+        .to eq("pages" => "write", "id-token" => "write")
+    end
+  end
 end

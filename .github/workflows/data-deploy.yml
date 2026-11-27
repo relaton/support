@@ -178,6 +178,8 @@ on:
         default: "main"
         type: string
 
+# Both jobs declare their own `permissions:`, which replaces this block, so no
+# job runs with it today. It stays as the floor for a job added without one.
 permissions:
   contents: read
 
@@ -240,6 +242,21 @@ jobs:
       || (github.event.workflow_run.conclusion == 'success'
       && github.event.workflow_run.head_branch == github.event.repository.default_branch)
     runs-on: ubuntu-latest
+    # `relaton index` reports the documents it cannot put in the machine index
+    # as an issue in the data repo (`Documents missing from the machine index`),
+    # or as a comment on the open one. Without the token and this scope it
+    # raises Relaton::IndexBuildError, and the run publishes nothing. A Check
+    # index run on a same-repo pull request reports too, so the PR branch's data
+    # can open the issue or add a comment to it.
+    #
+    # A job-level block replaces the workflow-level one, so `contents: read` is
+    # stated again. Every caller must grant `issues: write`, or GitHub fails the
+    # run as `startup_failure` before any job starts: the Cimas caller templates
+    # do (support#107), and spec/data_deploy_caller_template_spec.rb checks that
+    # they grant every scope a job here requests.
+    permissions:
+      contents: read
+      issues: write   # relaton index reports unindexable documents as an issue
     steps:
       # Both source paths are `if:`-gated, so an unrecognised value skips all of
       # them: nothing installs relaton-cli, nothing writes _site, and the run
@@ -374,6 +391,8 @@ jobs:
           PUBID_FLAVOR: ${{ steps.branding.outputs.pubid_flavor }}
           MACHINE_INDEX: ${{ steps.branding.outputs.machine_index }}
           PUBLISH_DATA: ${{ steps.branding.outputs.publish_data }}
+          # For the issue that relaton index opens; see the job's permissions.
+          GITHUB_TOKEN: ${{ github.token }}
         run: |
           # --pubid-flavor is mandatory for a machine index (relaton#114). Only
           # a repo with no configs.yml row resolves machine_index=false, and it
@@ -409,6 +428,8 @@ jobs:
           PUBID_FLAVOR: ${{ steps.branding.outputs.pubid_flavor }}
           MACHINE_INDEX: ${{ steps.branding.outputs.machine_index }}
           PUBLISH_DATA: ${{ steps.branding.outputs.publish_data }}
+          # For the issue that relaton index opens; see the job's permissions.
+          GITHUB_TOKEN: ${{ github.token }}
         run: |
           # The same flag logic as the gem step above, and it must stay so.
           ARGS=()
