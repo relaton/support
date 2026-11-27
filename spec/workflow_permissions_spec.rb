@@ -105,8 +105,8 @@ RSpec.describe "workflow token grants" do
       # against every job of the called workflow, skipped ones included; with
       # only `contents: read` every run was a `startup_failure` with 0 jobs. The
       # `if:` gate, not this grant, is what keeps a PR from publishing. See the
-      # template for the full argument. `issues: write` matches deploy.yml: it
-      # goes to the callers before build_index_page asks for it.
+      # template for the full argument. `issues: write` matches deploy.yml:
+      # build_index_page requests it for the issue that relaton index opens.
       "gh-actions/data/check-index.yml" => {
         "contents" => "read", "pages" => "write", "id-token" => "write", "issues" => "write"
       },

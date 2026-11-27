@@ -61,7 +61,7 @@ jobs:
     # a read-only token whatever this says, and a same-repo PR runs its own copy
     # of this file, so its author could change the grant anyway.
     #
-    # `issues: write` follows deploy.yml: build_index_page will ask for it, so
+    # `issues: write` follows deploy.yml: build_index_page asks for it, so
     # `relaton index` can report unindexable documents as an issue. On a pull
     # request that report runs too. A fork PR's token is read-only, so it cannot
     # open the issue, and `relaton index` raises when GitHub refuses the issue
