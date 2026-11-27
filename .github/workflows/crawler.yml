@@ -77,8 +77,15 @@ jobs:
           bundle config unset --local deployment
           bundle install
 
+      # GITHUB_TOKEN lets relaton report crawl errors as an "Error fetching
+      # documents" issue (Relaton::Logger::Channels::GhIssue). The token has
+      # the caller's permissions: without `issues: write` the issue request
+      # gets a 403, which is logged and does not fail the crawl. (A network
+      # error in that request still raises: relaton does not rescue it yet.)
       - run: |
           ${{ inputs.fetch-command }} ${{ inputs.args }} ${{ secrets.args }}
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
 
       - name: Diff data
         id: diff
